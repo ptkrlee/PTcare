@@ -64,5 +64,5 @@ test('measurement calculations reject skipped, negative and invalid values',asyn
  assert.equal(computedMeasurements('circumference',{'body-waist':'-5','body-hip':'100'})[0].value,'계산 전');
  assert.equal(computedMeasurements('circumference',{'body-waist':'80','body-hip':'0'})[0].value,'계산 전');
  assert.equal(computedMeasurements('grip',{'grip-right-1':'skipped','grip-right-2':'21.5','grip-right-3':'23'})[0].value,'23 kg');
- assert.equal(computedMeasurements('sarcopenia',{'asm-walk-6m':'6'})[1].value,'1.00 m/s');
+ assert.equal(computedMeasurements('sarcopenia',{'asm-walk-6m':'6'}).some(row=>row.label.includes('6m')),false);
 });

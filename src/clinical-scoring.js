@@ -1,6 +1,6 @@
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-10-22.attachments.v1';
+export const scoringVersion='2026-10-22.attachments.v2';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
@@ -46,7 +46,7 @@ export const tugPopulations=['지역사회 거주 일반 고령자','고관절 �
 export const evidence=[
  {id:'sppb-protocol',title:'첨부 SPPB Protocol and Score Sheet, 9쪽',url:'',detail:'균형 0–4점, 3m/4m 빠른 보행 시간 0–4점, 팔 미사용 5회 의자 일어서기 0–4점. 연령별로 표준 배점을 바꾸지 않습니다.'},
  {id:'cdc-tug',title:'CDC STEADI, Timed Up & Go, 2017 (첨부 PDF)',url:'https://www.cdc.gov/steadi/hcp/clinical-resources/index.html',detail:'일반 고령자, 평소 속도 3m TUG: 12초 이상이면 추가 낙상 위험 평가 필요. 12초 미만도 낙상 위험을 배제하지 않습니다.'},
- {id:'shumway-2000',title:'Shumway-Cook et al. Physical Therapy. 2000;80(9):896–903 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Shumway-Cook+2000+timed+up+go+896',detail:'일반 TUG 13.5초, 수동 과제 14.5초, 인지 과제 15초의 연구 절단값. CDC 기준과 혼합하거나 다른 질환에 공통 적용하지 않습니다.'},
+ {id:'shumway-2000',title:'Shumway-Cook et al. Physical Therapy. 2000;80(9):896–903 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Shumway-Cook+2000+timed+up+go+896',detail:'일반 TUG 13.5초, 신체 과제 14.5초, 인지 과제 15초의 연구 절단값. CDC 기준과 혼합하거나 다른 질환에 공통 적용하지 않습니다.'},
  {id:'hip-2007',title:'Kristensen et al. Physical Therapy. 2007;87(1):24–30 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Kristensen+2007+Timed+Up+Go+Hip+Fracture',detail:'고관절 골절 수술 후 6개월, 59명 표본의 24초 연구 참고값. 해당 시기·집단 선택에만 표시하며 일반화하지 않습니다.'},
  {id:'amputation-2007',title:'Dite et al. Arch Phys Med Rehabil. 2007;88(1):109–114 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Dite+2007+Clinical+identification+multiple+fall+risk+transtibial',detail:'일측 경골하 절단 후 6개월, 40명 표본의 19초 이상 다회 낙상 관련 연구 참고값. 일반 고령자 기준과 구분합니다.'}
 ];
@@ -54,14 +54,14 @@ export function interpretTUG(f={},context={}){
  const age=ageOn(context.birth,context.date),time=positive(f['tug-original']);
  const rows=[];
  if(age!==null)rows.push({label:'평가일 기준 연령',value:`만 ${age}세`});
- for(const [id,label] of [['tug-cognitive','인지 이중과제'],['tug-manual','수동 이중과제']]){const dual=positive(f[id]);if(time&&dual&&time<=3600&&dual<=3600)rows.push({label:`${label} 시간 증가율`,value:`${((dual-time)/time*100).toFixed(1)}% · (이중과제 시간 − 일반 시간) ÷ 일반 시간`});}
+ for(const [id,label] of [['tug-cognitive','인지 이중과제'],['tug-manual','신체 이중과제']]){const dual=positive(f[id]);if(time&&dual&&time<=3600&&dual<=3600)rows.push({label:`${label} 시간 증가율`,value:`${((dual-time)/time*100).toFixed(1)}% · (이중과제 시간 − 일반 시간) ÷ 일반 시간`});}
  if(!time||time>3600)return rows;
- if(Number(f['tug-distance'])!==3||f['tug-pace']!=='평소 속도'||f['tug-assistance']!=='신체적 도움 없음')return [...rows,{label:'TUG 해석',value:'3m · 평소 속도 · 신체적 도움 없음 조건을 확인하면 해당 기준을 비교합니다. 보행 보조기 사용은 별도로 기록하세요.'}];
+ if(Number(f['tug-distance']??3)!==3||f['tug-pace']!=='평소 속도'||f['tug-assistance']!=='신체적 도움 없음')return [...rows,{label:'TUG 해석',value:'3m · 평소 속도 · 신체적 도움 없음 조건을 확인하면 해당 기준을 비교합니다. 보행 보조기 사용은 별도로 기록하세요.'}];
  const population=f['tug-population'];
  if(population==='지역사회 거주 일반 고령자'&&age!==null&&age>=65){
   rows.push({label:'CDC STEADI · 12초 기준',value:time>=12?'12초 이상 · 낙상 위험 선별 기준 해당. 추가 낙상 평가가 필요합니다.':'12초 미만 · 이 기준에 해당하지 않음. 낙상 위험이 없다는 뜻은 아닙니다.'});
   if(f['tug-study-reference']==='연구 참고값도 표시'){
-   for(const [id,cutoff,label] of [['tug-original',13.5,'일반'],['tug-manual',14.5,'수동 이중과제'],['tug-cognitive',15,'인지 이중과제']]){const n=positive(f[id]);const taskConfirmed=id==='tug-original'||id==='tug-manual'&&f['tug-manual-protocol']==='가득 찬 물컵 들기'||id==='tug-cognitive'&&f['tug-cognitive-protocol']==='20–100 임의 숫자에서 거꾸로 세기';if(n&&n<=3600&&taskConfirmed)rows.push({label:`Shumway-Cook 2000 · ${label}`,value:`${cutoff}초 연구 참고값 ${n>=cutoff?'이상':'미만'} · 소규모 연구이며 CDC 기준과 구분합니다.`});}
+   for(const [id,cutoff,label] of [['tug-original',13.5,'일반'],['tug-manual',14.5,'신체 이중과제'],['tug-cognitive',15,'인지 이중과제']]){const n=positive(f[id]);const taskConfirmed=id==='tug-original'||id==='tug-manual'&&f['tug-manual-protocol']==='가득 찬 물컵 들기'||id==='tug-cognitive'&&f['tug-cognitive-protocol']==='20–100 임의 숫자에서 거꾸로 세기';if(n&&n<=3600&&taskConfirmed)rows.push({label:`Shumway-Cook 2000 · ${label}`,value:`${cutoff}초 연구 참고값 ${n>=cutoff?'이상':'미만'} · 소규모 연구이며 CDC 기준과 구분합니다.`});}
   }
  }else if(['고관절 골절 수술 후 6개월','일측 경골하 절단 후 6개월'].includes(population)){
   const hip=population.startsWith('고관절'),cutoff=hip?24:19;

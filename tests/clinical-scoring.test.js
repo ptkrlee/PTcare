@@ -50,3 +50,9 @@ test('TUG keeps disease-specific and dual-task study values separate from CDC; n
  assert.match(text(interpretTUG({...standard,'tug-original':'19','tug-population':'일측 경골하 절단 후 6개월'},context)),/19초 참고값 이상/);
  assert.doesNotMatch(text(interpretTUG({...standard,'tug-original':'19','tug-population':'파킨슨병'},context)),/19초 참고값|12초 선별/);
 });
+test('MoCA recall-method choices score only spontaneous recall, preserve legacy scores and skip unperformed recall',()=>{
+ for(const key of ['moca-k','moca-k2']){const a=assessments[key],manual={[key+'-recall-0']:1},fields={[key+'-recall-status']:'실시함',[key+'-cue-0']:'단서 없이 회상',[key+'-cue-1']:'범주 단서 후 회상',[key+'-cue-2']:'선다형 단서 후 회상',[key+'-cue-3']:'회상 못함',[key+'-cue-4']:'미실시'};const result=summarize(a,manual,fields);assert.deepEqual([0,1,2,3,4].map(i=>result.answers[key+'-recall-'+i]),[1,0,0,0,'skipped']);assert.equal(result.skipped,1);assert.equal(result.complete,false);assert.equal(result.raw,1);
+  const deferred=summarize(a,manual,{...fields,[key+'-recall-status']:'미실시'});assert.equal(deferred.skipped,5);assert.equal(deferred.raw,0);
+  assert.equal(summarize(a,manual,{[key+'-cue-0']:'회상 못함'}).answers[key+'-recall-0'],1,'old unscored cue fields must not override old manual points without an explicit new recall status');
+ }
+});

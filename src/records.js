@@ -4,7 +4,12 @@ const now=()=>new Date().toISOString();
 export function newVisit(date,sequence=1){return {id:crypto.randomUUID(),sequence,date,createdAt:now(),updatedAt:now(),forms:{},note:''};}
 export function newPatient(identity,date){const id=crypto.randomUUID();return {schemaVersion:1,id,identity:{name:'',birth:'',sex:'',...identity},createdAt:now(),updatedAt:now(),archived:false,visits:[newVisit(date)]};}
 export function newForm(){return {answers:{},fields:{},drawings:{},answeredAt:{},mobility:'walking',comment:'',note:'',updatedAt:now()};}
-export function formFor(visit,key){return visit.forms[key]||newForm();}
+export function formFor(visit,key){
+ const form=visit.forms[key]||newForm();
+ if(key==='tug'){const fields={'tug-distance':'3',...form.fields};if(fields['tug-manual-protocol']==='기타 수동 과제')fields['tug-manual-protocol']='기타 신체 과제';return {...form,fields};}
+ if(key==='sts'&&form.fields?.['sts-five-time']===undefined){const legacy=visit.forms.sarcopenia?.fields?.['asm-chair-5'];if(legacy!==undefined)return {...form,fields:{...form.fields,'sts-five-time':legacy}};}
+ return form;
+}
 export class RecordStore{
  constructor(owner,backend,storage=globalThis.localStorage){
   this.owner=owner;this.backend=backend;this.storage=storage;this.prefix=STORAGE_PREFIX+owner+':';this.memory=new Map();this.listeners=new Set();this.running=null;this.timer=null;this.active=true;this.error='';this.cacheError=false;this.cacheFailures=new Set();this.loading=true;

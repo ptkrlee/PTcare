@@ -59,6 +59,14 @@ export function summarize(assessment, answers={}, fields={}) {
      automatic[itemId]={active:true,score:valid?effective[itemId]:null,reason:valid?`${field.label}: ${value}개 → ${effective[itemId]}점`:'측정값 미평가 또는 입력 확인 필요'};
     }
    }
+   const recallStatus=fields[`${key}-recall-status`];
+   if(recallStatus){for(let i=0;i<5;i++){
+    const itemId=`${key}-recall-${i}`,method=fields[`${key}-cue-${i}`];
+    const deferred=['미실시','skipped'].includes(recallStatus)||['미실시','skipped'].includes(method);
+    const valid=recallStatus==='실시함'&&['단서 없이 회상','범주 단서 후 회상','선다형 단서 후 회상','회상 못함'].includes(method);
+    effective[itemId]=deferred?'skipped':valid?(method==='단서 없이 회상'?1:0):undefined;
+    automatic[itemId]={active:true,score:valid?effective[itemId]:null,reason:deferred?'미평가 · 총점 미확정':valid?`${method} → ${effective[itemId]}점`:'회상 방법을 선택해 주세요.'};
+   }}
   }
   const selected=assessment.items.map(item=>({item,skipped:effective[item.id]==='skipped',option:item.options.find(o=>o.score===effective[item.id])}));
   const raw=selected.reduce((sum,row)=>sum+(row.option?.score??0),0);

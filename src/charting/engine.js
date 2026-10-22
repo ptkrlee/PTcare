@@ -1,5 +1,6 @@
 import library from './exercises.json' with {type:'json'};
 import groups from './categories.json' with {type:'json'};
+import {formFor} from '../records.js';
 import {getAssessment,summarize} from '../data.js';
 import {computedMeasurements,measurementValueValid} from '../extra-assessments.js';
 export {groups};
@@ -22,7 +23,8 @@ export function newChart(serviceDate=''){
 export function chartFor(visit){const base=newChart(visit.date),saved=visit.chart||{};return {...base,...saved,homework:saved.homework??saved.education??'',context:{...base.context,...saved.context},plan:saved.plan||[],performed:saved.performed||[],history:saved.history||[]};}
 export function assessmentBasis(patient,visitId){
  const v=patient.visits.find(visit=>visit.id===visitId);if(!v)return [];
- return Object.entries(v.forms||{}).flatMap(([key,form])=>{
+ const keys=new Set(Object.keys(v.forms||{}));if(v.forms?.sarcopenia?.fields?.['asm-chair-5']!==undefined)keys.add('sts');
+ return [...keys].flatMap(key=>{const form=formFor(v,key);
   let a;try{a=getAssessment(key,form.mobility);}catch{return [];}if(!a)return [];
   const s=summarize(a,form.answers,form.fields);const measures=(a.fields||[]).filter(f=>measurementValueValid(f,form.fields?.[f.id])).map(f=>({title:f.label,value:form.fields[f.id],unit:f.unit||''}));
   if(!s.answered&&!s.skipped&&!measures.length)return [];

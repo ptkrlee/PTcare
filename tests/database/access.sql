@@ -31,7 +31,7 @@ do $$declare denied boolean:=false;a jsonb;begin
  begin perform public.save_patient_record('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{}',3,gen_random_uuid());exception when insufficient_privilege then denied:=true;end;assert denied,'admin edited therapist clinical record';
  perform public.admin_set_access('11111111-1111-4111-8111-111111111111',true,2,5,'two visit credits');
  assert jsonb_array_length(public.admin_access_history('11111111-1111-4111-8111-111111111111'))=1;
- perform public.admin_set_access('44444444-4444-4444-8444-444444444444',true,1,3,'verified therapist');
+ perform public.admin_set_access('44444444-4444-4444-8444-444444444444',true,1,3,'verified therapist','therapist');
  denied:=false;begin perform public.admin_set_access('11111111-1111-4111-8111-111111111111',true,2,5,'');exception when invalid_parameter_value then denied:=true;end;assert denied,'missing grant reason accepted';
 end;$$;
 set request.jwt.claim.sub='11111111-1111-4111-8111-111111111111';
