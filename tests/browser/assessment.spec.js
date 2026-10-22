@@ -35,7 +35,7 @@ test('skipped versus zero, later completion, result, print contrast and preserve
 });
 test('new patient and new visit cannot inherit another patient or previous visit responses',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-0').check();
- await page.locator('.assessment-person a').click();await page.locator('#new-visit').click();await page.locator('#visit-form button[type=submit],#visit-form button:not([type])').last().click();
+ await page.getByRole('link',{name:'회차 목록',exact:true}).click();await page.locator('#new-visit').click();await page.locator('#visit-form button[type=submit],#visit-form button:not([type])').last().click();
  await page.locator('.visit-card').first().locator('.evaluation-card').first().click();await expect(total(page)).toHaveText('0');
  await page.locator('.breadcrumbs a').first().click();await patient(page,'김영희');await expect(total(page)).toHaveText('0');await expect(page.locator('.assessment-person')).toContainText('김영희');
  expect(cloud.rows.size<=2).toBe(true);

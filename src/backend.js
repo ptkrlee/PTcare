@@ -1,6 +1,7 @@
+import {publicProject} from './public-project.js';
 import { createClient } from '@supabase/supabase-js';
-const url=import.meta.env.VITE_SUPABASE_URL;
-const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url=import.meta.env.VITE_SUPABASE_URL||publicProject.url;
+const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||import.meta.env.VITE_SUPABASE_ANON_KEY||publicProject.publishableKey;
 export const configured=!!(url&&key&&url.startsWith('https://')&&!url.includes('YOUR_PROJECT'));
 export const supabase=configured?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
 export class CloudBackend{
