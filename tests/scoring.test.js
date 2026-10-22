@@ -34,3 +34,8 @@ test('satisfaction minimum is ten and maximum is fifty, not zero-based',()=>{
   const a=assessments.satisfaction;
   assert.equal(summarize(a,Object.fromEntries(a.items.map(item=>[item.id,1]))).total,10);
 });
+
+test('skipped is explicit and different from zero, with partial result totals',()=>{
+ const a=assessments.bbs,answers=Object.fromEntries(a.items.map(item=>[item.id,0]));answers['bbs-0']='skipped';const s=summarize(a,answers);
+ assert.equal(s.total,0);assert.equal(s.skipped,1);assert.equal(s.answered,13);assert.equal(s.complete,false);assert.equal(s.reviewed,true);
+});

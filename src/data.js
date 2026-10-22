@@ -42,6 +42,6 @@ export function getAssessment(key, mobility='walking') {
   return {...base,max:90,items:base.items.map((item,i)=>i===8?{...item,title:'의자차(휠체어)',options:levels.map((label,j)=>({label,score:weights[5][j]}))}:item)};
 }
 export function summarize(assessment, answers) {
-  const selected=assessment.items.map(item=>({item,option:item.options.find(o=>o.score===answers[item.id])}));
-  return {total:selected.reduce((sum,row)=>sum+(row.option?.score??0),0),answered:selected.filter(row=>row.option!==undefined).length,complete:selected.every(row=>row.option!==undefined),selected};
+  const selected=assessment.items.map(item=>({item,skipped:answers[item.id]==='skipped',option:item.options.find(o=>o.score===answers[item.id])}));
+  return {skipped:selected.filter(row=>row.skipped).length,reviewed:selected.every(row=>row.option!==undefined||row.skipped),total:selected.reduce((sum,row)=>sum+(row.option?.score??0),0),answered:selected.filter(row=>row.option!==undefined).length,complete:selected.every(row=>row.option!==undefined),selected};
 }

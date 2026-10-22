@@ -3,6 +3,7 @@ async function identity(page){
   await page.locator('#person-name').fill('홍길동');
   await page.locator('#person-date').fill('2026-10-19');
   await page.locator('#person-birth').fill('1950-03-15');
+  await page.locator('#start-evaluation').click();
 }
 async function answer(page,index){
   for(const item of await page.locator('.question-card').all()) await item.locator('input[type=radio]').nth(index).check();
@@ -27,8 +28,10 @@ test('BBS full assessment, correction, result details, returning and refresh pri
 });
 test('incomplete forms cannot become final results, zero score can',async({page})=>{
   await page.goto('/');
-  await page.locator('.result-button').first().click();
+  await expect(page.locator('.assessment-tabs')).toBeHidden();
+  await page.locator('#start-evaluation').click();
   await expect(page.locator('.result-sheet')).toHaveCount(0);
+  await expect(page.locator('.assessment-tabs')).toBeHidden();
   await identity(page);
   await page.locator('.result-button').first().click();
   await expect(page.getByRole('alert')).toBeVisible();
@@ -94,4 +97,13 @@ test('mobile selections and capture sheet have no horizontal overflow or data tr
   await page.locator('#confirm-reset').click();
   await expect(page.locator('[data-mobile-total]')).toHaveText('0');
   expect(outbound).toEqual([]);
+});
+
+test('patient-first flow, strong selected contrast, skipped draft results and black print text',async({page})=>{
+ await page.goto('/');await expect(page.locator('.assessment-tabs')).toBeHidden();await identity(page);await expect(page.locator('.assessment-tabs')).toBeVisible();
+ await page.locator('#bbs-0-skip').check();for(const item of (await page.locator('.question-card').all()).slice(1))await item.locator('input[type=radio]').nth(4).check();
+ await expect(page.locator('[data-total]')).toHaveText('0');await expect(page.locator('[data-progress-text]')).toContainText('미평가 1');
+ await expect(page.locator('#bbs-1-4').locator('..')).toHaveCSS('background-color','rgb(217, 238, 224)');
+ await page.locator('.result-button').first().click();await expect(page.locator('.result-score')).toContainText('부분 점수');await expect(page.locator('.result-table tbody tr').first()).toContainText('미평가');
+ await page.emulateMedia({media:'print'});await expect(page.locator('.result-table')).toHaveCSS('color','rgb(0, 0, 0)');await page.pdf({path:'/tmp/ptcare-contrast-print.pdf',format:'A4'});
 });
