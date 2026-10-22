@@ -34,3 +34,34 @@ test('satisfaction minimum is ten and maximum is fifty, not zero-based',()=>{
   const a=assessments.satisfaction;
   assert.equal(summarize(a,Object.fromEntries(a.items.map(item=>[item.id,1]))).total,10);
 });
+
+test('both MoCA versions total 30; education adjustment is Korean-version specific and capped',()=>{
+ for(const key of ['moca-k','moca-k2']){
+  const a=assessments[key],answers=Object.fromEntries(a.items.map(item=>[item.id,Math.max(...item.options.map(o=>o.score))]));
+  assert.equal(summarize(a,answers,{'moca-k-education':'6'}).total,30);
+  const lost=Object.fromEntries(a.items.map(item=>[item.id,0]));
+  assert.equal(summarize(a,lost,{'moca-k-education':'6'}).total,key==='moca-k'?1:0);
+  assert.equal(summarize(a,lost,{'moca-k-education':'7'}).total,0);
+  assert.equal(summarize(a,answers,{}).complete,key!=='moca-k');
+  assert.equal(summarize(a,answers,{'moca-k-education':'skipped'}).complete,key!=='moca-k');
+ }
+ assert.deepEqual(assessments['moca-k'].words,['얼굴','비단','교회','진달래','빨강']);
+ assert.deepEqual(assessments['moca-k2'].words,['얼굴','비단','학교','피리','노랑']);
+});
+test('explicit skipped items stay distinct from zero, never become a complete total',()=>{
+ const a=assessments.bbs,answers=Object.fromEntries(a.items.map(item=>[item.id,0]));answers['bbs-0']='skipped';
+ const s=summarize(a,answers);assert.equal(s.total,0);assert.equal(s.skipped,1);assert.equal(s.answered,13);assert.equal(s.complete,false);assert.equal(s.selected[0].skipped,true);assert.equal(s.selected[0].option,undefined);
+});
+test('SPPB sums only its three manually scored domains; measurement-only tests have no artificial total',()=>{
+ assert.equal(summarize(assessments.sppb,{'sppb-balance':4,'sppb-gait':4,'sppb-chair':4}).total,12);
+ for(const key of ['grip','sts','one-leg','tug','circumference']){assert.equal(summarize(assessments[key],{}).total,null);assert.equal(summarize(assessments[key],{}).complete,false);}
+});
+
+test('measurement calculations reject skipped, negative and invalid values',async()=>{
+ const {computedMeasurements}=await import('../src/extra-assessments.js');
+ assert.equal(computedMeasurements('circumference',{'body-waist':'80','body-hip':'100'})[0].value,'0.800');
+ assert.equal(computedMeasurements('circumference',{'body-waist':'-5','body-hip':'100'})[0].value,'계산 전');
+ assert.equal(computedMeasurements('circumference',{'body-waist':'80','body-hip':'0'})[0].value,'계산 전');
+ assert.equal(computedMeasurements('grip',{'grip-right-1':'skipped','grip-right-2':'21.5','grip-right-3':'23'})[0].value,'23 kg');
+ assert.equal(computedMeasurements('sarcopenia',{'asm-walk-6m':'6'})[1].value,'1.00 m/s');
+});

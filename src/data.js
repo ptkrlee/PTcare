@@ -1,3 +1,4 @@
+import { extraAssessments } from './extra-assessments.js';
 // Source: user-supplied association activity and satisfaction forms.
 // BBS choices follow the attachment, with only spacing/typographic corrections.
 const bbsRows = [
@@ -32,6 +33,7 @@ const satisfaction = [
   '가족 및 주변 사람들이 방문운동 서비스의 중요성을 이해하는 데 도움이 되었다.',
 ];
 export const assessments = {
+  ...extraAssessments,
   bbs: { code:'BBS', title:'균형 및 낙상 위험 검사', english:'Berg Balance Scale', short:'균형 · 낙상 위험', description:'일상 속 움직임으로 균형 능력을 살펴봅니다.', max:56, unit:'14문항 · 문항당 0–4점', items:bbsRows.map(([title,labels],i)=>({id:`bbs-${i}`,title,options:labels.map((label,j)=>({label,score:4-j})),note:i===1?'원문 안내: 2분 동안 서 있기가 가능하면 3번은 4점으로 채점하고 4번을 실시합니다. 3번 점수는 평가자가 직접 선택해 주세요.':null})) },
   mbi: { code:'MBI', title:'일상생활동작 수행 능력', english:'Modified Barthel Index', short:'일상생활 수행 능력', description:'일상생활에서 필요한 도움의 정도를 확인합니다.', max:100, unit:'10문항 · 항목별 배점', items:mbiRows.map(([title,max],i)=>({id:`mbi-${i}`,title,options:levels.map((label,j)=>({label,score:weights[max][j]}))})) },
   satisfaction: { code:'만족도', title:'방문운동 서비스 만족도', english:'Service Satisfaction Survey', short:'서비스 만족도', description:'더 나은 방문운동을 위해 경험을 돌아봅니다.', max:50, unit:'10문항 · 문항당 1–5점', items:satisfaction.map((title,i)=>({id:`satisfaction-${i}`,title,options:['매우 그렇지 않다','그렇지 않다','보통','그렇다','매우 그렇다'].map((label,j)=>({label,score:j+1}))})) },
@@ -41,7 +43,12 @@ export function getAssessment(key, mobility='walking') {
   if(key!=='mbi'||mobility!=='wheelchair') return base;
   return {...base,max:90,items:base.items.map((item,i)=>i===8?{...item,title:'의자차(휠체어)',options:levels.map((label,j)=>({label,score:weights[5][j]}))}:item)};
 }
-export function summarize(assessment, answers) {
-  const selected=assessment.items.map(item=>({item,option:item.options.find(o=>o.score===answers[item.id])}));
-  return {total:selected.reduce((sum,row)=>sum+(row.option?.score??0),0),answered:selected.filter(row=>row.option!==undefined).length,complete:selected.every(row=>row.option!==undefined),selected};
+export function summarize(assessment, answers={}, fields={}) {
+  const selected=assessment.items.map(item=>({item,skipped:answers[item.id]==='skipped',option:item.options.find(o=>o.score===answers[item.id])}));
+  const raw=selected.reduce((sum,row)=>sum+(row.option?.score??0),0);
+  const education=fields['moca-k-education'];
+  const educationKnown=education!==''&&education!=null&&Number.isInteger(Number(education))&&Number(education)>=0&&Number(education)<=40;
+  const adjustment=assessment.code==='MoCA-K'&&educationKnown&&Number(education)<=6?1:0;
+  const total=assessment.max===null?null:Math.min(assessment.max,raw+adjustment);
+  return {raw,adjustment,total,educationKnown,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown),selected};
 }
