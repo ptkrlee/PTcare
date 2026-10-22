@@ -7,3 +7,5 @@
 
 .clinical-evidence{margin:20px 0;border:1px solid #aab9c5;border-radius:10px;padding:16px 18px;background:#f4f6f8;color:#17324d;font-size:13px;line-height:1.9}.clinical-evidence summary{font-weight:700;cursor:pointer}.clinical-evidence a{color:#17324d;text-decoration:underline}.auto-score-card{border-left:5px solid #17324d;background:#f5faf9}.auto-score-card p{line-height:1.9;font-size:14px}.auto-score-badge{display:inline-block;padding:6px 10px;border-radius:6px;background:#deeee9;color:#17324d;font-size:12px;font-weight:700}.choice:has(input:disabled:checked){opacity:1}.result-sheet .clinical-evidence{font-size:11px}@media print{.clinical-evidence{display:none}.auto-score-badge{color:#000!important}}
 .question-card .choices,.auto-score-card>p{clear:both}.choice-text{min-width:0}
+
+.header-caption{line-height:1.6}.header-caption>span{display:block}.header-caption>span:first-child{font-weight:650}.header-caption>span:last-child{font-size:12px}
