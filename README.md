@@ -12,7 +12,7 @@
 
 ## 개발
 
-Node.js 20.19+ 또는 22.12+ (검증 환경 24.19.0).
+Node.js 22.12+ (검증 환경 24.19.0). Supabase SDK는 Node.js 22 이상을 요구합니다.
 
 ```sh
 cd /workspace/PTcare
