@@ -56,7 +56,7 @@ export class RecordStore{
     }catch(error){
      const latest=this.read(sent.document.id);
      if(error.code==='40001'){this.write({...latest,conflict:true});this.error='다른 기기의 변경과 충돌했습니다. 두 기록을 확인하고 복구해 주세요.';}
-     else {this.error='서버 저장 대기 중입니다. 기기 임시 저장은 유지됩니다. 연결·로그인 상태를 확인하고 다시 동기화하세요.';if(error.code==='42501'||error.code==='28000')this.error='로그인 또는 기록 접근 권한을 확인해 주세요. 입력한 기기 임시 기록은 유지됩니다.';}
+     else {this.error='서버 저장 대기 중입니다. 기기 임시 저장은 유지됩니다. 연결·로그인 상태를 확인하고 다시 동기화하세요.';if(error.code==='P0001')this.error=error.message+' 기기 임시 기록은 유지됩니다.';if(error.code==='42501'||error.code==='28000')this.error='로그인 또는 기록 접근 권한을 확인해 주세요. 입력한 기기 임시 기록은 유지됩니다.';}
      break;
     }
     this.emit();

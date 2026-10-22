@@ -34,7 +34,7 @@ test('skipped versus zero, later completion, result, print contrast and preserve
  await page.locator('.score-card .result-button').click();await expect(page.locator('.result-score')).toContainText('평가 총점');
 });
 test('new patient and new visit cannot inherit another patient or previous visit responses',async({page,context})=>{
- const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-0').check();
+ const cloud=mockCloud();cloud.access.get('11111111-1111-4111-8111-111111111111').patient_limit=2;await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-0').check();
  await page.getByRole('link',{name:'회차 목록',exact:true}).click();await page.locator('#new-visit').click();await page.locator('#visit-form button[type=submit],#visit-form button:not([type])').last().click();
  await page.locator('.visit-card').first().locator('.evaluation-card').first().click();await expect(total(page)).toHaveText('0');
  await page.locator('.breadcrumbs a').first().click();await patient(page,'김영희');await expect(total(page)).toHaveText('0');await expect(page.locator('.assessment-person')).toContainText('김영희');
@@ -68,6 +68,6 @@ test('mobile target flow and all assessment pages stay inside viewport; selectio
  const selectedColor=await page.locator('#bbs-0-0').evaluate(el=>getComputedStyle(el.closest('label')).backgroundColor);
  const otherColor=await page.locator('#bbs-0-1').evaluate(el=>getComputedStyle(el.closest('label')).backgroundColor);expect(selectedColor).not.toBe(otherColor);
  await page.screenshot({path:'/tmp/ptcare-platform-mobile.png',fullPage:false});
- for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});for(const key of ['bbs','moca-k','moca-k2','sppb','grip','sts','one-leg','tug','circumference','sarcopenia']){await page.locator(`[data-tab="${key}"]`).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${key}`).toBe(true);}}
+ for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});for(const key of ['bbs','moca-k','moca-k2','sppb','grip','sts','one-leg','tug','circumference','sarcopenia']){await page.locator(`[data-tab="${key}"]`).click();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${width} ${key} `+JSON.stringify(await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(el=>el.getBoundingClientRect().right>innerWidth+1).slice(0,8).map(el=>({tag:el.tagName,cls:el.className,right:el.getBoundingClientRect().right,text:el.textContent.slice(0,50)}))))).toBe(true);}}
  await page.setViewportSize({width:1280,height:1000});await page.screenshot({path:'/tmp/ptcare-platform-desktop.png'});
 });

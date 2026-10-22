@@ -1,3 +1,4 @@
+import {scoreSPPB} from './clinical-scoring.js';
 import { extraAssessments } from './extra-assessments.js';
 // Source: user-supplied association activity and satisfaction forms.
 // BBS choices follow the attachment, with only spacing/typographic corrections.
@@ -44,11 +45,26 @@ export function getAssessment(key, mobility='walking') {
   return {...base,max:90,items:base.items.map((item,i)=>i===8?{...item,title:'의자차(휠체어)',options:levels.map((label,j)=>({label,score:weights[5][j]}))}:item)};
 }
 export function summarize(assessment, answers={}, fields={}) {
-  const selected=assessment.items.map(item=>({item,skipped:answers[item.id]==='skipped',option:item.options.find(o=>o.score===answers[item.id])}));
+  const effective={...answers},automatic={};
+  if(assessment.code==='SPPB'){
+   for(const [id,result] of Object.entries(scoreSPPB(fields))){effective[id]=result.score===null?(result.skipped?'skipped':undefined):result.score;automatic[id]={...result,active:true};}
+  }
+  if(['MoCA-K','K-MoCA'].includes(assessment.code)){
+   const key=assessment.code==='MoCA-K'?'moca-k':'moca-k2';
+   for(const [fieldId,itemId,convert] of [[`${key}-fluency-count`,`${key}-fluency`,n=>n>=(key==='moca-k'?11:6)?1:0],[`${key}-serial7-correct`,`${key}-serial7`,n=>n>=4?3:n>=2?2:n===1?1:0],[`${key}-vigilance-errors`,`${key}-vigilance`,n=>n<=1?1:0]]){
+    const value=fields[fieldId],field=assessment.fields.find(f=>f.id===fieldId);
+    if(value!==undefined&&value!==null&&value!==''){
+     const valid=value!=='skipped'&&Number.isInteger(Number(value))&&Number(value)>=field.min&&Number(value)<=field.max;
+     effective[itemId]=value==='skipped'?'skipped':valid?convert(Number(value)):undefined;
+     automatic[itemId]={active:true,score:valid?effective[itemId]:null,reason:valid?`${field.label}: ${value}개 → ${effective[itemId]}점`:'측정값 미평가 또는 입력 확인 필요'};
+    }
+   }
+  }
+  const selected=assessment.items.map(item=>({item,skipped:effective[item.id]==='skipped',option:item.options.find(o=>o.score===effective[item.id])}));
   const raw=selected.reduce((sum,row)=>sum+(row.option?.score??0),0);
   const education=fields['moca-k-education'];
   const educationKnown=education!==''&&education!=null&&Number.isInteger(Number(education))&&Number(education)>=0&&Number(education)<=40;
   const adjustment=assessment.code==='MoCA-K'&&educationKnown&&Number(education)<=6?1:0;
   const total=assessment.max===null?null:Math.min(assessment.max,raw+adjustment);
-  return {raw,adjustment,total,educationKnown,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown),selected};
+  return {raw,adjustment,total,educationKnown,answers:effective,automatic,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown),selected};
 }

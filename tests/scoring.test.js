@@ -52,8 +52,9 @@ test('explicit skipped items stay distinct from zero, never become a complete to
  const a=assessments.bbs,answers=Object.fromEntries(a.items.map(item=>[item.id,0]));answers['bbs-0']='skipped';
  const s=summarize(a,answers);assert.equal(s.total,0);assert.equal(s.skipped,1);assert.equal(s.answered,13);assert.equal(s.complete,false);assert.equal(s.selected[0].skipped,true);assert.equal(s.selected[0].option,undefined);
 });
-test('SPPB sums only its three manually scored domains; measurement-only tests have no artificial total',()=>{
- assert.equal(summarize(assessments.sppb,{'sppb-balance':4,'sppb-gait':4,'sppb-chair':4}).total,12);
+test('SPPB derives its three domains from measurements; other timed tests do not get invented point totals',()=>{
+ assert.equal(summarize(assessments.sppb,{}, {'sppb-side':'10','sppb-semi':'10','sppb-tandem':'10','sppb-gait-1':'4','sppb-chair-single':'팔 사용 없이 가능','sppb-chair-time':'10'}).total,12);
+ assert.equal(summarize(assessments.sppb,{'sppb-balance':4,'sppb-gait':4,'sppb-chair':4}).answered,0);
  for(const key of ['grip','sts','one-leg','tug','circumference']){assert.equal(summarize(assessments[key],{}).total,null);assert.equal(summarize(assessments[key],{}).complete,false);}
 });
 
