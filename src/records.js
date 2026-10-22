@@ -7,7 +7,7 @@ export function newForm(){return {answers:{},fields:{},drawings:{},answeredAt:{}
 export function formFor(visit,key){return visit.forms[key]||newForm();}
 export class RecordStore{
  constructor(owner,backend,storage=globalThis.localStorage){
-  this.owner=owner;this.backend=backend;this.storage=storage;this.prefix=STORAGE_PREFIX+owner+':';this.memory=new Map();this.listeners=new Set();this.running=null;this.timer=null;this.active=true;this.error='';this.cacheError=false;this.loading=true;
+  this.owner=owner;this.backend=backend;this.storage=storage;this.prefix=STORAGE_PREFIX+owner+':';this.memory=new Map();this.listeners=new Set();this.running=null;this.timer=null;this.active=true;this.error='';this.cacheError=false;this.cacheFailures=new Set();this.loading=true;
   try{for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key?.startsWith(this.prefix)){const value=JSON.parse(storage.getItem(key));this.memory.set(value.document.id,value);}}}catch{this.cacheError=true;this.error='기기 임시 저장소를 읽을 수 없습니다. 창을 닫지 말고 서버 저장을 확인해 주세요.';}
  }
  onChange(fn){this.listeners.add(fn);return ()=>this.listeners.delete(fn);}
@@ -18,13 +18,13 @@ export class RecordStore{
  dirty(){return [...this.memory.values()].filter(r=>r.dirty);}
  write(record){
   this.memory.set(record.document.id,record);
-  try{this.storage.setItem(this.key(record.document.id),JSON.stringify(record));this.cacheError=false;}
-  catch{this.cacheError=true;this.error='기기 임시 저장 실패. 서버 저장 완료 전에는 페이지를 닫지 마세요.';}
+  try{this.storage.setItem(this.key(record.document.id),JSON.stringify(record));this.cacheFailures.delete(record.document.id);this.cacheError=this.cacheFailures.size>0;}
+  catch{this.cacheFailures.add(record.document.id);this.cacheError=true;this.error='기기 임시 저장 실패. 서버 저장 완료 전에는 페이지를 닫지 마세요.';}
  }
  update(id,mutator){
   let base=this.read(id);
   // Re-read the newest durable local state before every mutation, preserving edits from another tab.
-  try{const local=JSON.parse(this.storage.getItem(this.key(id)));if(local&&(!base||local.document.updatedAt>=base.document.updatedAt))base=local;}catch{}
+  try{const local=JSON.parse(this.storage.getItem(this.key(id)));if(local&&!this.cacheFailures.has(id)&&(!base||local.document.updatedAt>=base.document.updatedAt))base=local;}catch{}
   if(!base)throw new Error('대상자 기록을 찾을 수 없습니다.');
   const record=copy(base);mutator(record.document);record.document.updatedAt=now();record.dirty=true;
   record.changeId=crypto.randomUUID();record.error='';this.write(record);this.emit();this.schedule();return record.document;
@@ -49,7 +49,7 @@ export class RecordStore{
     try{
      const row=await this.backend.save(sent);if(!this.active)break;
      let latest=this.read(row.id);
-     try{const durable=JSON.parse(this.storage.getItem(this.key(row.id)));if(durable&&durable.document.updatedAt>=latest.document.updatedAt)latest=durable;}catch{}
+     try{const durable=JSON.parse(this.storage.getItem(this.key(row.id)));if(durable&&!this.cacheFailures.has(row.id)&&durable.document.updatedAt>=latest.document.updatedAt)latest=durable;}catch{}
      const unchanged=latest.changeId===sent.changeId;
      this.write({...latest,document:unchanged?row.document:latest.document,revision:row.revision,dirty:!unchanged,conflict:false,error:''});
      this.error=this.cacheError?this.error:'';
@@ -68,7 +68,7 @@ export class RecordStore{
   })();return this.running;
  }
  loadExternal(){
-  try{for(let i=0;i<this.storage.length;i++){const key=this.storage.key(i);if(key?.startsWith(this.prefix)){const value=JSON.parse(this.storage.getItem(key));const current=this.memory.get(value.document.id);if(!current||value.document.updatedAt>=current.document.updatedAt)this.memory.set(value.document.id,value);}}}catch{this.cacheError=true;}
+  try{for(let i=0;i<this.storage.length;i++){const key=this.storage.key(i);if(key?.startsWith(this.prefix)){const value=JSON.parse(this.storage.getItem(key));const current=this.memory.get(value.document.id);if(!this.cacheFailures.has(value.document.id)&&(!current||value.document.updatedAt>=current.document.updatedAt))this.memory.set(value.document.id,value);}}}catch{this.cacheError=true;}
  }
  async conflictCopy(id){
   const local=this.read(id);if(!local?.conflict)return;
@@ -79,6 +79,6 @@ export class RecordStore{
   if(row)this.write({document:row.document,revision:row.revision,changeId:row.last_change_id,dirty:false,conflict:false});
   this.emit();await this.sync();return doc.id;
  }
- clearCache(){for(const id of this.memory.keys())this.storage.removeItem(this.key(id));this.memory.clear();}
+ clearCache(){const keys=[];for(let i=0;i<this.storage.length;i++){const key=this.storage.key(i);if(key?.startsWith(this.prefix))keys.push(key);}for(const key of keys)this.storage.removeItem(key);this.memory.clear();this.cacheFailures.clear();this.cacheError=false;}
  stop(){this.active=false;clearTimeout(this.timer);this.listeners.clear();}
 }

@@ -27,3 +27,9 @@ test('conflicting devices preserve local edits and create a separate recoverable
 test('quota failure reports risk rather than claiming the edit was saved to device',async()=>{
  const {store,b}=await setup();store.storage.setItem=()=>{throw Error('quota');};b.setOffline(true);const p=newPatient({name:'A'},'2026-10-22');store.create(p);assert.equal(store.cacheError,true);assert.equal(store.read(p.id).document.identity.name,'A');await store.sync();assert.equal(store.cacheError,true);store.stop();
 });
+
+test('a successful cache write for another patient cannot hide an earlier failed draft write',async()=>{
+ const {store,storage,b}=await setup();const a=newPatient({name:'A'},'2026-10-22'),c=newPatient({name:'C'},'2026-10-22');store.create(a);store.create(c);b.setOffline(true);const set=storage.setItem.bind(storage);storage.setItem=(key,value)=>{if(key===store.key(a.id))throw Error('selective quota');set(key,value);};
+ store.update(a.id,d=>d.identity.name='A 최신');store.update(c.id,d=>d.identity.name='C 최신');assert.equal(store.cacheError,true);
+ store.update(a.id,d=>d.visits[0].note='추가');assert.equal(store.read(a.id).document.identity.name,'A 최신');assert.equal(store.cacheError,true);store.stop();
+});
