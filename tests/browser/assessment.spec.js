@@ -1,8 +1,9 @@
+const chooseField=(page,selector,value)=>page.locator(selector).getByRole('radio',{name:value,exact:true}).check();
 import {test,expect} from '@playwright/test';
 import {mockCloud,login,patient} from './mock-cloud.js';
 const total=page=>page.locator('[data-total]');
 const saved=page=>expect(page.locator('[data-save-status]')).toHaveText('서버 저장 완료');
-async function chooseAll(page,index){for(const item of await page.locator('.question-card').all()){const radios=item.locator('input[type=radio]:enabled');if(await radios.count())await radios.nth(index).check();}}
+async function chooseAll(page,index){for(const item of await page.locator('.question-card').all()){const radios=item.locator('input[type=radio]:not([data-field]):not([data-criterion]):enabled');if(await radios.count())await radios.nth(index).check();}}
 
 test('authentication and patient selection are required before an assessment',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);
@@ -44,12 +45,12 @@ test('MoCA variants, unscored recall, drawing persistence and measurement skip/r
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);
  await page.locator('[data-tab="moca-k"]').click();await page.locator('#moca-k-education').fill('6');await chooseAll(page,0);
  // Every item is binary except serial subtraction: its first option is zero.
- await page.locator('#moca-k-serial7-3').check();await page.locator('#moca-k-fluency-count').fill('11');await page.locator('#moca-k-recall-status').selectOption('실시함');for(let i=0;i<5;i++)await page.locator('#moca-k-cue-'+i).selectOption('단서 없이 회상');await expect(total(page)).toHaveText('30');
+ await page.locator('#moca-k-serial7-3').check();await page.locator('#moca-k-fluency-count').fill('11');await chooseField(page,'#moca-k-recall-status','실시함');for(let i=0;i<5;i++)await chooseField(page,'#moca-k-cue-'+i,'단서 없이 회상');await expect(total(page)).toHaveText('30');
  await page.locator('#moca-k-memory-1-0').check();await expect(total(page)).toHaveText('30');
  const canvas=page.locator('[data-drawing="1"]');await canvas.scrollIntoViewIfNeeded();const box=await canvas.boundingBox();await page.mouse.move(box.x+20,box.y+20);await page.mouse.down();await page.mouse.move(box.x+70,box.y+60,{steps:4});await page.mouse.up();
  await page.reload();await expect(page.locator('#moca-k-memory-1-0')).toBeChecked();
  expect(await page.locator('[data-drawing="1"]').evaluate(c=>c.getContext('2d').getImageData(0,0,c.width,c.height).data.some((v,i)=>i%4===3&&v>0))).toBe(true);
- await page.locator('[data-tab="moca-k2"]').click();await chooseAll(page,0);await page.locator('#moca-k2-serial7-3').check();await page.locator('#moca-k2-fluency-count').fill('6');await page.locator('#moca-k2-recall-status').selectOption('실시함');for(let i=0;i<5;i++)await page.locator('#moca-k2-cue-'+i).selectOption('단서 없이 회상');await expect(total(page)).toHaveText('30');
+ await page.locator('[data-tab="moca-k2"]').click();await chooseAll(page,0);await page.locator('#moca-k2-serial7-3').check();await page.locator('#moca-k2-fluency-count').fill('6');await chooseField(page,'#moca-k2-recall-status','실시함');for(let i=0;i<5;i++)await chooseField(page,'#moca-k2-cue-'+i,'단서 없이 회상');await expect(total(page)).toHaveText('30');
  await page.locator('[data-tab=circumference]').click();await page.locator('#body-waist').fill('80');await page.locator('#body-hip').fill('100');await expect(page.locator('[data-computed]')).toContainText('0.800');
  await page.locator('[data-skip-field="body-calf-right"]').click();await expect(page.locator('#body-calf-right')).toBeDisabled();await page.reload();await expect(page.locator('#body-calf-right')).toBeDisabled();
  await page.locator('[data-skip-field="body-calf-right"]').click();await page.locator('#body-calf-right').fill('32');await expect(page.locator('#body-calf-right')).toHaveValue('32');

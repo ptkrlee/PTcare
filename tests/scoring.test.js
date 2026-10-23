@@ -16,7 +16,7 @@ test('unanswered is distinct from a selected zero; invalid answers never count',
   assert.equal(summarize(a,{[a.items[0].id]:0}).answered,1);
   assert.equal(summarize(a,{[a.items[0].id]:99}).answered,0);
   const zero=Object.fromEntries(a.items.map(item=>[item.id,0]));
-  assert.equal(summarize(a,zero).complete,true);
+  assert.equal(summarize(a,zero).complete,false); // Below top timed criteria need actual durations.
   assert.equal(summarize(a,zero).total,0);
 });
 test('MBI uses item weights, with wheelchair replacing walking rather than adding',()=>{

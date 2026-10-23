@@ -1,3 +1,5 @@
+import {criterionState,timedCriterion,bbsTimed} from '../timed-criteria.js';
+import {workflowProgress} from '../assessment-workflow.js';
 import library from './exercises.json' with {type:'json'};
 import groups from './categories.json' with {type:'json'};
 import {formFor} from '../records.js';
@@ -26,7 +28,9 @@ export function assessmentBasis(patient,visitId){
  const keys=new Set(Object.keys(v.forms||{}));if(v.forms?.sarcopenia?.fields?.['asm-chair-5']!==undefined)keys.add('sts');
  return [...keys].flatMap(key=>{const form=formFor(v,key);
   let a;try{a=getAssessment(key,form.mobility);}catch{return [];}if(!a)return [];
-  const s=summarize(a,form.answers,form.fields);const measures=(a.fields||[]).filter(f=>measurementValueValid(f,form.fields?.[f.id])).map(f=>({title:f.label,value:form.fields[f.id],unit:f.unit||''}));
+  const s=workflowProgress(a,form,summarize(a,form.answers,form.fields));const measures=(a.fields||[]).filter(f=>measurementValueValid(f,form.fields?.[f.id])).map(f=>({title:f.label,value:form.fields[f.id],unit:f.unit||''}));
+  for(const field of a.fields||[]){const c=criterionState(field.id,form.fields);if(c.active&&c.valid)measures.push({title:field.label+' · 기준 확인',value:(c.confirmed?timedCriterion(field.id,form.fields).pass:'기준 미충족')+(c.actual===undefined?' (실제 시간 미입력)':''),unit:''});}
+  for(const item of a.items){const rule=bbsTimed[item.id];if(rule)for(const side of rule.bilateral?['right','left']:['']){const id=item.id+'-seconds'+(side?'-'+side:'');if(form.fields[id]!==undefined&&form.fields[id]!==''&&form.fields[id]!=='skipped'&&Number.isFinite(Number(form.fields[id]))&&Number(form.fields[id])>=0&&Number(form.fields[id])<=3600)measures.push({title:item.title+(side?' · '+(side==='right'?'우':'좌'):'')+' 실제 시간',value:form.fields[id],unit:'초'});}}
   if(!s.answered&&!s.skipped&&!measures.length)return [];
   return [{key,title:a.title,visitId:v.id,sequence:v.sequence,date:v.date,total:s.total,max:a.max,complete:s.complete,answered:s.answered,skipped:s.skipped,measures,computed:computedMeasurements(key,form.fields,{birth:patient.identity.birth,date:v.date}),items:s.selected.filter(row=>row.option).map(({item,option})=>({id:item.id,title:item.title,score:option.score,max:Math.max(...item.options.map(o=>o.score)),label:option.label})),updatedAt:form.updatedAt}];
  });

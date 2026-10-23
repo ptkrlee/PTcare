@@ -1,3 +1,4 @@
+import {bbsTimeValid} from './timed-criteria.js';
 import {scoreSPPB} from './clinical-scoring.js';
 import { extraAssessments } from './extra-assessments.js';
 // Source: user-supplied association activity and satisfaction forms.
@@ -74,5 +75,5 @@ export function summarize(assessment, answers={}, fields={}) {
   const educationKnown=education!==''&&education!=null&&Number.isInteger(Number(education))&&Number(education)>=0&&Number(education)<=40;
   const adjustment=assessment.code==='MoCA-K'&&educationKnown&&Number(education)<=6?1:0;
   const total=assessment.max===null?null:Math.min(assessment.max,raw+adjustment);
-  return {raw,adjustment,total,educationKnown,answers:effective,automatic,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown),selected};
+  return {raw,adjustment,total,educationKnown,answers:effective,automatic,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown)&&(assessment.code!=='BBS'||assessment.items.every(item=>bbsTimeValid(item,{answers,fields}))),selected};
 }
