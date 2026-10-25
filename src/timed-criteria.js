@@ -31,5 +31,6 @@ export const bbsTimed={
 export function bbsTimeValid(item,form){
  const rule=bbsTimed[item.id],answer=form.answers[item.id];if(!rule||!Number.isInteger(answer))return true;
  const ids=rule.bilateral?[item.id+'-seconds-right',item.id+'-seconds-left']:[item.id+'-seconds'];
+ if(form.fields[item.id+'-time-required']!=='required'&&ids.every(id=>form.fields[id]===undefined||form.fields[id]===''))return true;
  return ids.every(id=>{const raw=form.fields[id];if((raw==null||raw==='')&&answer===4)return true;const n=Number(raw);if(raw==null||raw===''||raw==='skipped'||!Number.isFinite(n)||n<0||n>3600||Math.abs(n*100-Math.round(n*100))>1e-6)return false;if(answer===4&&rule.direction==='at-most'&&n===0)return false;return answer!==4||meetsCriterion(n,{...rule,direction:rule.direction||'at-least'});});
 }

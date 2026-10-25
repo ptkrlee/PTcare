@@ -1,7 +1,7 @@
 import {criterionState} from './timed-criteria.js';
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-10-23.criteria.v3';
+export const scoringVersion='2026-10-25.review.v4';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;

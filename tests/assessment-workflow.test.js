@@ -16,7 +16,7 @@ test('failed timing criteria need actual seconds; strict upper and inclusive low
 });
 test('completion needs actual BBS times below top criteria and includes both rotation directions',()=>{
  const a=getAssessment('bbs'),f={fields:{},answers:Object.fromEntries(a.items.map(x=>[x.id,4]))};assert.equal(progress('bbs',f).complete,true);
- f.answers['bbs-10']=3;assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-right']='4';assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-left']='8';assert.equal(progress('bbs',f).complete,true);
+ f.fields['bbs-10-time-required']='required';f.answers['bbs-10']=3;assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-right']='4';assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-left']='8';assert.equal(progress('bbs',f).complete,true);
  f.answers['bbs-10']=4;assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-left']='0';assert.equal(progress('bbs',f).complete,false);
  assert.deepEqual(Object.keys(bbsTimed),['bbs-1','bbs-2','bbs-5','bbs-6','bbs-10','bbs-11','bbs-12','bbs-13']);
 });
@@ -33,4 +33,18 @@ test('automatic charting retains criterion confirmations and does not invent mea
  const {assessmentBasis}=await import('../src/charting/engine.js');
  const p={identity:{},visits:[{id:'visit',date:'2026-10-23',sequence:1,forms:{'one-leg':{answers:{},fields:{'ols-open-right-criterion':'passed'}}}}]};
  const basis=assessmentBasis(p,'visit');assert.equal(basis.length,1);assert.equal(basis[0].measures.length,1);assert.match(basis[0].measures[0].value,/통과 · 30초 이상/);assert.match(basis[0].measures[0].value,/실제 시간 미입력/);assert.equal(basis[0].complete,false);
+});
+
+test('legacy BBS scores remain complete without newly introduced times; new edits require raw times',()=>{
+ const a=getAssessment('bbs'),f={updatedAt:'2026-10-22T00:00:00Z',fields:{},answers:Object.fromEntries(a.items.map((x,i)=>[x.id,i%5]))};
+ assert.equal(progress('bbs',f).complete,true);assert.equal(progress('bbs',f).completedAt,f.updatedAt);
+ f.fields['bbs-1-time-required']='required';assert.equal(progress('bbs',f).complete,false);f.fields['bbs-1-seconds']='60';assert.equal(progress('bbs',f).complete,true);
+ f.answers['bbs-0']='skipped';assert.equal(progress('bbs',f).complete,false);
+});
+
+test('MoCA instructions distinguish correct serial subtraction, response errors and version-specific cues',()=>{
+ const k=getAssessment('moca-k'),k2=getAssessment('moca-k2');
+ for(const a of [k,k2]){const note=a.items.find(x=>x.id.endsWith('-serial7')).note;assert.match(note,/93 → 86 → 79 → 72 → 65/);assert.match(note,/92\(첫 답 오답\)/);assert.equal(a.recallCues.length,5);}
+ assert.equal(k.recallCues[1].choices.join(','),'나일론,면,비단');assert.equal(k2.recallCues[1].choices.join(','),'면,삼베,비단');assert.equal(k2.recallCues[3].category,'악기');
+ assert.match(k.items.find(x=>x.id.endsWith('abstraction-1')).note,/바퀴를 가졌다/);assert.match(k2.items.find(x=>x.id.endsWith('abstraction-1')).note,/정답이 아닙니다/);
 });
