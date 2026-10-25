@@ -38,7 +38,7 @@ export const assessments = {
   ...extraAssessments,
   bbs: { code:'BBS', title:'균형 및 낙상 위험 검사', english:'Berg Balance Scale', short:'균형 · 낙상 위험', description:'일상 속 움직임으로 균형 능력을 살펴봅니다.', max:56, unit:'14문항 · 문항당 0–4점', items:bbsRows.map(([title,labels],i)=>({id:`bbs-${i}`,title,options:labels.map((label,j)=>({label,score:4-j})),note:i===1?'원문 안내: 2분 동안 서 있기가 가능하면 3번은 4점으로 채점하고 4번을 실시합니다. 3번 점수는 평가자가 직접 선택해 주세요.':null})) },
   mbi: { code:'MBI', title:'일상생활동작 수행 능력', english:'Modified Barthel Index', short:'일상생활 수행 능력', description:'일상생활에서 필요한 도움의 정도를 확인합니다.', max:100, unit:'10문항 · 항목별 배점', items:mbiRows.map(([title,max],i)=>({id:`mbi-${i}`,title,options:levels.map((label,j)=>({label,score:weights[max][j]}))})) },
-  satisfaction: { code:'만족도', title:'방문운동 서비스 만족도', english:'Service Satisfaction Survey', short:'서비스 만족도', description:'더 나은 방문운동을 위해 경험을 돌아봅니다.', max:50, unit:'10문항 · 문항당 1–5점', items:satisfaction.map((title,i)=>({id:`satisfaction-${i}`,title,options:['매우 그렇지 않다','그렇지 않다','보통','그렇다','매우 그렇다'].map((label,j)=>({label,score:j+1}))})) },
+  satisfaction: { code:'만족도', title:'방문운동 서비스 만족도', english:'Service Satisfaction Survey', short:'서비스 만족도', description:'더 나은 방문운동을 위해 경험을 돌아봅니다.', max:50, unit:'10문항 · 가로 별점 선택',instruction:'대상자가 느낀 서비스 경험에 맞는 별을 직접 선택해 주세요. 별 1개부터 5개까지 선택할 수 있으며, 응답하지 않은 문항은 미평가로 남길 수 있습니다.', items:satisfaction.map((title,i)=>({id:`satisfaction-${i}`,title,options:['매우 그렇지 않다','그렇지 않다','보통','그렇다','매우 그렇다'].map((label,j)=>({label,score:j+1}))})) },
 };
 export function getAssessment(key, mobility='walking') {
   const base=assessments[key];

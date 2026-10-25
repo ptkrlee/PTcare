@@ -54,8 +54,8 @@ export function recommend(patient,visit,chart){
   const score=matched.length*10+Math.min(relevant.length,3)*3+ex.minLevel;
   return {...ex,rank:score,reasons:reasons.length?reasons:[`치료사가 확인한 가능 수준: ${capabilities[level][1]}`]};
  }).sort((a,b)=>b.rank-a.rank||a.id.localeCompare(b.id));
- // Keep variety rather than recommending six variants of a single movement category.
- const selected=[],perGroup=new Map();for(const ex of ranked){if((perGroup.get(ex.category)||0)>=2)continue;selected.push(ex);perGroup.set(ex.category,(perGroup.get(ex.category)||0)+1);if(selected.length===6)break;}
+ // Keep variety rather than recommending three variants of a single movement category.
+ const selected=[],perGroup=new Map();for(const ex of ranked){if((perGroup.get(ex.category)||0)>=2)continue;selected.push(ex);perGroup.set(ex.category,(perGroup.get(ex.category)||0)+1);if(selected.length===3)break;}
  return {items:selected,basis,blocked:selected.length?'':'가능 자세에 맞는 도구를 확인해 주세요. 치료사가 목록에서 운동을 직접 선택할 수도 있습니다.'};
 }
 export const defaultDose=Object.freeze({sets:'3',reps:'10',seconds:'3',minutes:''});
@@ -67,10 +67,11 @@ export function doseErrors(item){return doseFields.flatMap(([key,label,,max])=>{
 export function doseText(item){return doseFields.filter(([key])=>item[key]!==''&&item[key]!=null).map(([key,label,unit])=>`${key==='reps'?({both:'좌우 각 ',left:'왼쪽 ',right:'오른쪽 '}[item.side]||''):key==='sets'?'':label+' '}${item[key]}${unit}`).join(' · ');}
 export const exercisePurpose=ex=>{const index=ex.sentence.indexOf(',');return index>=0?ex.sentence.slice(index+1).trim():'';};
 export function noteSource(patient,visit,chart){
- return JSON.stringify({patientId:patient.id,identity:patient.identity,visitId:visit.id,serviceDate:chart.serviceDate,therapist:chart.therapist,startTime:chart.startTime,duration:chart.duration,subjective:chart.subjective,beforePain:chart.beforePain,afterPain:chart.afterPain,response:chart.response,homework:chart.homework??chart.education??'',nextVisitDate:chart.nextVisitDate||'',nextVisitTime:chart.nextVisitTime||'',nextPlan:chart.nextPlan,noExerciseReason:chart.noExerciseReason,context:chart.context,plan:chart.plan,performed:chart.performed,basis:assessmentBasis(patient,chart.context.assessmentVisitId||visit.id)});
+ return JSON.stringify({patientId:patient.id,identity:patient.identity,visitId:visit.id,serviceDate:chart.serviceDate,therapist:chart.therapist,startTime:chart.startTime,duration:chart.duration,subjective:chart.subjective,beforePain:chart.beforePain,afterPain:chart.afterPain,response:chart.response,homework:chart.homework??chart.education??'',nextVisitDate:chart.nextVisitDate||'',nextVisitTime:chart.nextVisitTime||'',nextPlan:chart.nextPlan,noExerciseReason:chart.noExerciseReason,context:chart.context,plan:chart.plan,performed:chart.performed,serviceRecord:chart.serviceRecord?{...chart.serviceRecord,photos:(chart.serviceRecord.photos||[]).map(photo=>photo?{id:photo.id,width:photo.width,height:photo.height,caption:photo.caption,addedAt:photo.addedAt}:null)}:null,basis:assessmentBasis(patient,chart.context.assessmentVisitId||visit.id)});
 }
 export function chartIssues(chart){
  const issues=[];
+ if(chart.serviceRecord?.status==='미실시'&&chart.performed.some(row=>row.status==='done'))issues.push('서비스 미실시 상태와 실제 실시 운동이 함께 기록되어 있습니다. 상태를 확인해 주세요.');
  for(const [key,label] of [['serviceDate','서비스 날짜'],['nextVisitDate','다음 방문 날짜']])if(chart[key]&&!validDate(chart[key]))issues.push(`${label}를 확인해 주세요.`);
  if(chart.nextVisitTime&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(chart.nextVisitTime))issues.push('다음 방문 시간을 확인해 주세요.');
  for(const [key,label] of [['beforePain','시작 전 통증'],['afterPain','종료 후 통증']])if(chart[key]!==''&&chart[key]!=null&&(!Number.isInteger(Number(chart[key]))||Number(chart[key])<0||Number(chart[key])>10))issues.push(`${label}은 0–10의 정수로 입력해 주세요.`);
