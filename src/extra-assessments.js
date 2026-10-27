@@ -1,3 +1,4 @@
+import {basicAssessment,sgdsAssessment} from './basic-assessment.js';
 import {musculoskeletalAssessments} from './musculoskeletal.js';
 import {scoreSPPB,interpretTUG,tugPopulations} from './clinical-scoring.js';
 const binary=(id,title,note,group)=>({id,title,note,group,options:[{label:'수행 / 정답',score:1},{label:'미수행 / 오답',score:0}]});
@@ -51,6 +52,7 @@ const makeMoCA=(key,k2)=>{
  return {code:k2?'K-MoCA':'MoCA-K',title:k2?'인지기능 평가 · K2 춘천판':'인지기능 평가 · MoCA-K',english:k2?'Korean-Montreal Cognitive Assessment · K2 Chuncheon':'Montreal Cognitive Assessment · Korean',short:k2?'MoCA · K2 춘천판':'MoCA · 한국판',max:30,unit:'30점 · 검사자 채점',items,fields,words,recallCues,source:k2?'K-MoCA · June 6, 2012 / Version 7.1':'MoCA-K · 2006년 3월 1일',reference:k2?'moca-k2.png':'moca-k.png',instruction:'첨부 검사지와 실시요강에 따라 검사자가 시행하고 점수를 기록합니다. 즉각회상과 단서 후 회상은 총점에 포함하지 않습니다.',note:k2?'K2 춘천판은 첨부 실시요강에 교육년수 가산 규칙이 없어 원점수만 합산합니다. 다른 판의 보정이나 절단점을 적용하지 않습니다.':'한국판은 교육년수 6년 이하일 때 1점을 더하되 총점은 30점을 넘지 않습니다. 교육년수를 입력해야 보정 총점을 확정합니다.',sessionNote:'MoCA의 기억력·지연회상은 동일 검사 세션의 정해진 간격으로 실시합니다. 다음 방문에서 새로 검사할 때는 새 회차를 시작하세요. 여러 날에 걸친 기록은 표준 시행 총점으로 해석하지 않습니다.'};
 };
 export const extraAssessments={
+ basic:basicAssessment,sgds:sgdsAssessment,
  ...musculoskeletalAssessments,
  'moca-k':makeMoCA('moca-k',false),
  'moca-k2':makeMoCA('moca-k2',true),

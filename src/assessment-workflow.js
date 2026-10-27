@@ -1,3 +1,4 @@
+import {basicComplete} from './basic-assessment.js';
 import {clinicalComplete,selectedClinicalRows} from './musculoskeletal.js';
 import {measurementValueValid} from './extra-assessments.js';
 import {criterionState,bbsTimeValid} from './timed-criteria.js';
@@ -20,10 +21,11 @@ export function workflowProgress(a,f,s){
   // Dual tasks are optional, but a started task must have its duration and protocol.
   if(key==='tug')for(const [id,protocol] of [['tug-cognitive','tug-cognitive-protocol'],['tug-manual','tug-manual-protocol']])if(fields[id]||fields[protocol])complete=complete&&valid(id)&&valid(protocol);
  }
+ if(a.basic)complete=basicComplete(f);
  if(a.musculoskeletal)complete=clinicalComplete(a,f);
  if(a.code==='BBS')complete=complete&&a.items.every(item=>bbsTimeValid(item,f));
  // Invalid entered numbers cannot be reported as a finished evaluation.
- if((a.fields||[]).some(spec=>spec.type==='number'&&!(a.clinicalKey==='rom'&&spec.id.endsWith('-degrees')&&fields[spec.id.slice(0,-8)]!=='Limited')&&fields[spec.id]!==undefined&&fields[spec.id]!==''&&fields[spec.id]!=='skipped'&&!valid(spec.id)))complete=false;
+ if((a.fields||[]).some(spec=>spec.type==='number'&&!(a.basic&&spec.id==='basic-pain-night'&&!(fields['basic-pain-patterns']||[]).includes('야간 통증'))&&!(a.clinicalKey==='rom'&&spec.id.endsWith('-degrees')&&fields[spec.id.slice(0,-8)]!=='Limited')&&fields[spec.id]!==undefined&&fields[spec.id]!==''&&fields[spec.id]!=='skipped'&&!valid(spec.id)))complete=false;
  const clinicalIds=a.musculoskeletal?selectedClinicalRows(a,f).flatMap(row=>row.sides.map(side=>row.id+'-'+side)):null;
  const measured=clinicalIds?clinicalIds.filter(valid).length:(a.fields||[]).filter(x=>valid(x.id)).length;
  const date=complete?(f.completedAt||f.updatedAt||''):'';

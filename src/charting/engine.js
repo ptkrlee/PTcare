@@ -1,3 +1,5 @@
+import {basicSafety} from '../basic-assessment.js';
+import {latestAssessments} from '../service-plan.js';
 import {criterionState,timedCriterion,bbsTimed} from '../timed-criteria.js';
 import {workflowProgress} from '../assessment-workflow.js';
 import library from './exercises.json' with {type:'json'};
@@ -41,6 +43,7 @@ const deficitGoals={
 };
 export function recommend(patient,visit,chart){
  const c=chart.context||{},basis=assessmentBasis(patient,c.assessmentVisitId||visit.id);
+ const latestBasic=latestAssessments(patient).find(x=>x.key==='basic');if(latestBasic&&basicSafety(latestBasic.f.fields).length)return {items:[],basis,blocked:'기초평가 안전선별에 추가 확인할 내용이 있습니다. 현재 상태를 확인한 뒤 추천을 검토하세요.'};
  const level=capabilities.findIndex(([key])=>key===c.capability);
  if(c.safety!=='cleared')return {items:[],basis,blocked:c.safety==='concern'?'운동 전 확인이 필요한 증상·제한이 있어 자동 추천을 보류합니다. 상태를 평가하고 필요한 조치를 먼저 확인하세요.':'현재 상태와 운동 제한 여부를 치료사가 확인한 뒤 추천 후보를 만들 수 있습니다.'};
  if(c.precautions?.trim())return {items:[],basis,blocked:'주의·제한사항이 기록되어 있습니다. 자동 추천은 보류하고 치료사가 개별적으로 운동을 검토해 선택하세요.'};
