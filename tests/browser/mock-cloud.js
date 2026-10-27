@@ -60,5 +60,5 @@ export async function login(page,email='therapist@example.test'){
  await page.goto('/');await page.locator('#auth-email').fill(email);await page.locator('#auth-password').fill('test-password-only');await page.locator('#auth-form button').click();await page.locator('#new-patient:not([disabled])').waitFor();
 }
 export async function patient(page,name='홍길동'){
- await page.locator('#new-patient').click();await page.locator('#patient-form [name=name]').fill(name);await page.locator('#patient-form [name=birth]').fill('1950-03-15');await page.locator('#patient-form button[type=submit]').click();await page.locator('.evaluation-card').first().waitFor();await page.locator('.evaluation-card').first().click();await page.locator('#bbs-0').waitFor();
+ await page.locator('#new-patient').click();await page.locator('#patient-form [name=name]').fill(name);await page.locator('#patient-form [name=birth]').fill('1950-03-15');await page.locator('#patient-form button[type=submit]').click();await page.locator('.evaluation-card').first().waitFor();await page.locator('.evaluation-card[href$="/bbs"]').first().click();await page.locator('#bbs-0').waitFor();
 }

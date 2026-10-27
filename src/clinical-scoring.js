@@ -1,7 +1,7 @@
 import {criterionState} from './timed-criteria.js';
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-10-27.intake.v5';
+export const scoringVersion='2026-10-27.evidence.v6';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
@@ -50,7 +50,7 @@ export function ageOn(birth,date){
  if(!valid(birth)||!valid(date)||birth>date)return null;
  const age=Number(date.slice(0,4))-Number(birth.slice(0,4))-(date.slice(5)<birth.slice(5)?1:0);return age<=130?age:null;
 }
-export const tugPopulations=['지역사회 거주 일반 고령자','고관절 골절 수술 후 6개월','일측 경골하 절단 후 6개월','뇌졸중','파킨슨병','알츠하이머병','기타 / 복합질환'];
+export const tugPopulations=['지역사회 거주 일반 고령자','고관절 골절 수술 후 6개월','일측 경골하 절단 후 6개월','뇌졸중','파킨슨병','알츠하이머병','신경과 진단 신경근육질환 (18–65세)','시설 거주 고령자 (말레이시아 연구 참고)','기타 / 복합질환'];
 export const evidence=[
  {id:'sppb-protocol',title:'첨부 SPPB Protocol and Score Sheet, 9쪽',url:'',detail:'균형 0–4점, 3m/4m 빠른 보행 시간 0–4점, 팔 미사용 5회 의자 일어서기 0–4점. 연령별로 표준 배점을 바꾸지 않습니다.'},
  {id:'cdc-tug',title:'CDC STEADI, Timed Up & Go, 2017 (첨부 PDF)',url:'https://www.cdc.gov/steadi/hcp/clinical-resources/index.html',detail:'일반 고령자, 평소 속도 3m TUG: 12초 이상이면 추가 낙상 위험 평가 필요. 12초 미만도 낙상 위험을 배제하지 않습니다.'},
@@ -58,19 +58,35 @@ export const evidence=[
  {id:'hip-2007',title:'Kristensen et al. Physical Therapy. 2007;87(1):24–30 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Kristensen+2007+Timed+Up+Go+Hip+Fracture',detail:'고관절 골절 수술 후 6개월, 59명 표본의 24초 연구 참고값. 해당 시기·집단 선택에만 표시하며 일반화하지 않습니다.'},
  {id:'amputation-2007',title:'Dite et al. Arch Phys Med Rehabil. 2007;88(1):109–114 (첨부 DOC 인용)',url:'https://pubmed.ncbi.nlm.nih.gov/?term=Dite+2007+Clinical+identification+multiple+fall+risk+transtibial',detail:'일측 경골하 절단 후 6개월, 40명 표본의 19초 이상 다회 낙상 관련 연구 참고값. 일반 고령자 기준과 구분합니다.'}
 ];
+evidence.push(
+ {id:'nmd-2022',keys:['tug'],title:'Savcun Demirci et al. Turk J Neurol. 2022;28:6–9 (첨부 원문)',url:'https://doi.org/10.4274/tnd.2021.84553',detail:'18–65세 신경근육질환 102명, 도움·보조기 없이 3m TUG 3회(2분 휴식), 가능한 빠르게. 표 절단값 8.92초, AUC 0.887, 민감도 80.9%, 특이도 72.7%. 초록은 8.9초로 반올림. 3회 대표값 산출법이 명시되지 않아 각 시행 비교만 제공.'},
+ {id:'malaysia-2025',keys:['tug'],title:'Zohari et al. Malays J Med Sci. 2025;32(5):51–61',url:'https://doi.org/10.21315/mjms-05-2025-367',detail:'말레이시아 시설 거주, 60세 이상 독립 보행(보조기 허용) 92명. 3m TUG 12.5초, DFRI 기준 AUC 0.65, 민감도 93.5%, 특이도 34.4%. 한국 지역사회 고령자에게 그대로 적용하지 않음.'},
+ {id:'awgs-editorial-2025',keys:['sarcopenia','grip','sts'],title:'Won & Jung. AWGS 2025 지침 소개 사설. Ann Geriatr Med Res. 2025;29:421–423',url:'https://doi.org/10.4235/agmr.25.0207',detail:'50–64세까지 관리 대상 확대를 소개하지만 수치 기준표·진단 알고리즘이 없는 사설입니다. 인용된 AWGS 2025 합의문 원문과 표가 필요합니다. 이 파일만으로 악력·ASM·5회 STS 절단값을 만들지 않습니다.'},
+ {id:'imacs-mmt',keys:['mmt'],title:'IMACS Form 04 · Manual Muscle Testing Procedures (첨부 1–3쪽)',url:'',detail:'Kendall 변형 등급표의 0·T·2−·2·2+·3−·3·3+·4−·4·4+·5를 사용. 3− 서서히 내려오기 3초 이상, 3 검사 자세 3초 유지, 저항 적용 3초. 0–10 대응값을 MMT 0–5 등급과 혼합·합산하지 않음.'},
+ {id:'kfacs-sts-2021',keys:['sts'],title:'Kim & Won. Cut Points of Chair Stand Test… JAMDA (사용자 제공 초록)',url:'https://doi.org/10.1016/j.jamda.2021.11.007',detail:'한국 KFACS 70–84세 지역사회 거주자, 기초 2,977명·2년 추적 2,515명. 5회 STS 10.8초·12.8초 경계값. 초록에 상세 시행법과 경계 포함 규칙이 없어 수치 비교만 제공하며 30초/1분 STS나 SPPB 배점으로 바꾸지 않음.'},
+ {id:'tagliafico-2022',keys:['sarcopenia','grip','sts'],title:'Tagliafico et al. Sarcopenia: how to measure, when and why. Radiol Med. 2022;127:228–237 (첨부 원문)',url:'https://doi.org/10.1007/s11547-022-01450-3',detail:'근력 저하·근육량/질 저하·신체기능 저하를 구분. 232쪽 DXA 본문: 남성 ALMI <7.0, 여성 <5.5 kg/m²; 표1 AWGS 2014: 남성 ≤7.0, 여성 ≤5.4. 서로 다른 판본·비교연산자를 구분해 선택한 DXA 기준만 비교. BIA 수분 상태의 한계를 명시하며 최신 AWGS 2025 수치표는 아님.'},
+ {id:'ph-sts-2024',keys:['sts'],title:'ERS Congress 2024, Eur Respir J 64 Suppl.68 PA2505 (사용자 첨부 초록 이미지)',url:'',detail:'폐고혈압 114명, 1분 STS 14.5회가 6MWT 165m 미만 식별: 민감도 69%, 특이도 100%. 학회 초록이며 전문 없음. 기존 30초 STS·5회 STS·일반 고령자 낙상 절단값으로 사용하지 않음.'}
+);
 export function interpretTUG(f={},context={}){
  const age=ageOn(context.birth,context.date),time=positive(f['tug-original']);
  const rows=[];
  if(age!==null)rows.push({label:'평가일 기준 연령',value:`만 ${age}세`});
  for(const [id,label] of [['tug-cognitive','인지 이중과제'],['tug-manual','신체 이중과제']]){const dual=positive(f[id]);if(time&&dual&&time<=3600&&dual<=3600)rows.push({label:`${label} 시간 증가율`,value:`${((dual-time)/time*100).toFixed(1)}% · (이중과제 시간 − 일반 시간) ÷ 일반 시간`});}
  if(!time||time>3600)return rows;
- if(Number(f['tug-distance']??3)!==3||f['tug-pace']!=='평소 속도'||f['tug-assistance']!=='신체적 도움 없음')return [...rows,{label:'TUG 해석',value:'3m · 평소 속도 · 신체적 도움 없음 조건을 확인하면 해당 기준을 비교합니다. 보행 보조기 사용은 별도로 기록하세요.'}];
  const population=f['tug-population'];
+ if(population==='신경과 진단 신경근육질환 (18–65세)'){
+  const times=[time,positive(f['tug-nmd-2']),positive(f['tug-nmd-3'])];
+  const eligible=age!==null&&age>=18&&age<=65&&Number(f['tug-distance']??3)===3&&f['tug-pace']==='가능한 빠르게'&&f['tug-assistance']==='신체적 도움 없음'&&f['tug-nmd-confirm']==='신경과 진단 · 보행 보조기/신체 도움 없이 · 3회 시행 · 시행 간 2분 휴식'&&times.every(t=>t!==null&&t<=3600);
+  rows.push({label:'신경근육질환 · 8.92초 연구 참고',value:eligible?`각 시행 ${times.map((t,i)=>`${i+1}회 ${t.toFixed(2)}초 (${t>8.92?'초과':'이하'})`).join(' · ')}. 102명 후향 연구, 민감도 80.9%, 특이도 72.7%. 원문 표 8.92초(초록 8.9초). 원문에 3회 대표값 산출법이 명확하지 않아 평균·최고값으로 자동 위험 판정하지 않습니다.`:'18–65세, 신경과 진단, 3m, 가능한 빠르게, 보조기·신체 도움 없이 3회(사이 2분 휴식) 조건을 확인하세요. 원문의 8.92초는 해당 연구 집단의 참고값입니다.'});return rows;
+ }
+ if(Number(f['tug-distance']??3)!==3||f['tug-pace']!=='평소 속도'||f['tug-assistance']!=='신체적 도움 없음')return [...rows,{label:'TUG 해석',value:'3m · 평소 속도 · 신체적 도움 없음 조건을 확인하면 해당 기준을 비교합니다. 보행 보조기 사용은 별도로 기록하세요.'}];
  if(population==='지역사회 거주 일반 고령자'&&age!==null&&age>=65){
   rows.push({label:'CDC STEADI · 12초 기준',value:time>=12?'12초 이상 · 낙상 위험 선별 기준 해당. 추가 낙상 평가가 필요합니다.':'12초 미만 · 이 기준에 해당하지 않음. 낙상 위험이 없다는 뜻은 아닙니다.'});
   if(f['tug-study-reference']==='연구 참고값도 표시'){
    for(const [id,cutoff,label] of [['tug-original',13.5,'일반'],['tug-manual',14.5,'신체 이중과제'],['tug-cognitive',15,'인지 이중과제']]){const n=positive(f[id]);const taskConfirmed=id==='tug-original'||id==='tug-manual'&&f['tug-manual-protocol']==='가득 찬 물컵 들기'||id==='tug-cognitive'&&f['tug-cognitive-protocol']==='20–100 임의 숫자에서 거꾸로 세기';if(n&&n<=3600&&taskConfirmed)rows.push({label:`Shumway-Cook 2000 · ${label}`,value:`${cutoff}초 연구 참고값 ${n>=cutoff?'이상':'미만'} · 소규모 연구이며 CDC 기준과 구분합니다.`});}
   }
+ }else if(population==='시설 거주 고령자 (말레이시아 연구 참고)'&&age!==null&&age>=60){
+  rows.push({label:'시설 거주 고령자 · 12.5초 연구 참고',value:`12.5초 참고값 ${time>=12.5?'이상':'미만'} · 말레이시아 단일 시설 92명, DFRI 기준 AUC 0.65, 민감도 93.5%, 특이도 34.4%. 한국 재가 대상자에 검증된 판정값이 아니며 낙상 위험을 확정·배제하지 않습니다.`});
  }else if(['고관절 골절 수술 후 6개월','일측 경골하 절단 후 6개월'].includes(population)){
   const hip=population.startsWith('고관절'),cutoff=hip?24:19;
   rows.push({label:hip?'고관절 골절 집단 · 연구 참고':'경골하 절단 집단 · 연구 참고',value:`${cutoff}초 참고값 ${time>=cutoff?'이상':'미만'} · ${hip?'59':'40'}명 연구의 해당 시기·집단에 한정. 낙상 위험 확정 결과가 아닙니다.`});

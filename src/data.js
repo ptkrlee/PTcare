@@ -77,3 +77,5 @@ export function summarize(assessment, answers={}, fields={}) {
   const total=assessment.max===null?null:Math.min(assessment.max,raw+adjustment);
   return {raw,adjustment,total,educationKnown,answers:effective,automatic,skipped:selected.filter(row=>row.skipped).length,answered:selected.filter(row=>row.option!==undefined).length,complete:assessment.items.length>0&&selected.every(row=>row.option!==undefined)&&(assessment.code!=='MoCA-K'||educationKnown)&&(assessment.code!=='BBS'||assessment.items.every(item=>bbsTimeValid(item,{answers,fields}))),selected};
 }
+
+export const assessmentOrder=['basic','rom','mmt','tone','fac','bbs','mbi','sgds','sppb','tug','one-leg','sts','grip','circumference','sarcopenia','moca-k','moca-k2','satisfaction'];

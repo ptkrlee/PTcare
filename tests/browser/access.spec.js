@@ -10,7 +10,7 @@ test('free account allows one patient and three editable visits; further creatio
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.getByRole('link',{name:'회차 목록',exact:true}).click();
  for(let i=0;i<2;i++){await page.locator('#new-visit').click();await page.locator('#visit-form .button.primary').click();await expect(page.locator('.visit-card')).toHaveCount(i+2);}
  await page.locator('#new-visit').click();await expect(page.locator('#app-dialog')).toContainText('최대 3회차');await page.locator('button[data-close]').click();
- await page.locator('.visit-card').first().locator('.evaluation-card').first().click();await page.locator('#bbs-0-0').check();await expect(page.locator('#bbs-0-0')).toBeChecked();
+ await page.locator('.visit-card').first().locator('.evaluation-card[href$="/bbs"]').first().click();await page.locator('#bbs-0-0').check();await expect(page.locator('#bbs-0-0')).toBeChecked();
  await page.locator('.breadcrumbs a').first().click();await page.locator('#new-patient').click();await expect(page.locator('#app-dialog')).toContainText('최대 1명');await expect(page.locator('#patient-form')).toHaveCount(0);await expect(page.locator('.usage-banner')).toContainText('1/1명');await page.locator('#app-dialog a[href="#/account"]').click();await expect(page.locator('#member-request-form')).toBeVisible();
 });
 test('admin can inspect clinical data read-only, grant limits with audit, and approve a therapist',async({page,context,browser})=>{

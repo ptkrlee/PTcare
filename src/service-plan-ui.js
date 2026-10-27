@@ -2,7 +2,7 @@ import {escape as e,icon} from './icons.js';
 import {syncServicePlan,defaultSessions} from './service-plan.js';
 import {patientNavigation} from './patient-navigation.js';
 export const koreanDateTime=value=>{if(!value)return '반영할 평가 없음';const date=new Date(value);return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('sv-SE',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).format(date)+' (한국시간)':String(value);};
-const groups=[['기초·통증',['basic']],['ROM / MMT / 근긴장도',['rom','mmt','tone']],['기능·이동',['bbs','sppb','tug','sts','one-leg','grip']],['일상생활 / 정서',['mbi','sgds']],['인지',['moca-k','moca-k2']],['기타 평가',['circumference','sarcopenia','satisfaction']]];
+const groups=[['기초·통증',['basic']],['ROM / MMT / 근긴장도',['rom','mmt','tone']],['기능·이동',['fac','bbs','sppb','tug','sts','one-leg','grip']],['일상생활 / 정서',['mbi','sgds']],['인지',['moca-k','moca-k2']],['기타 평가',['circumference','sarcopenia','satisfaction']]];
 const areas=['침상','앉기','서기','보행','가동성','근력','균형','일상생활동작'];
 function condensed(source){if(source.shortText)return source.shortText;return source.text.length>450?source.text.slice(0,450)+' · 상세 결과는 해당 평가지 참조':source.text;}
 function summaryTable(current){return `<table class="service-print-table plan-summary"><tbody>${groups.map(([label,keys])=>{const sources=current.sources.filter(x=>keys.includes(x.key));return `<tr><th>${label}</th><td>${sources.length?sources.map(x=>`<strong>${e(x.title)}</strong> ${e(condensed(x))}<small>평가일 ${e(x.date)} · ${x.sequence}회차 · 최종 입력 ${e(koreanDateTime(x.updatedAt))}</small>`).join('<br>'):'평가 기록 없음'}</td></tr>`;}).join('')}</tbody></table>`;}
