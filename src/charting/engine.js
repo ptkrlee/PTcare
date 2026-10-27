@@ -63,14 +63,39 @@ export function recommend(patient,visit,chart){
 }
 export const defaultDose=Object.freeze({sets:'3',reps:'10',seconds:'3',minutes:''});
 export const sides=[['total','전체 횟수'],['both','좌우 각각'],['left','왼쪽'],['right','오른쪽']];
-export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',memo:''};}
+export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',method:'',memo:''};}
 export function newPerformedItem(exerciseId){return {...newPlanItem(exerciseId),sets:'',reps:'',seconds:'',minutes:'',status:'done',reaction:'',stopReason:''};}
 export const doseFields=[['sets','세트','세트',100],['reps','반복','회',1000],['seconds','유지 시간','초',3600],['minutes','시간','분',240]];
 export function doseErrors(item){return doseFields.flatMap(([key,label,,max])=>{const value=item[key];if(value===''||value==null)return [];const n=Number(value);return Number.isFinite(n)&&n>0&&n<=max&&(key==='minutes'||key==='seconds'||Number.isInteger(n))?[]:[`${label} 입력을 확인해 주세요.`];});}
 export function doseText(item){return doseFields.filter(([key])=>item[key]!==''&&item[key]!=null).map(([key,label,unit])=>`${key==='reps'?({both:'좌우 각 ',left:'왼쪽 ',right:'오른쪽 '}[item.side]||''):key==='sets'?'':label+' '}${item[key]}${unit}`).join(' · ');}
+// A single formatter drives live previews, clinical drafts and the service sheet.
+// Only actual entered values are narrated; library purposes and planned doses are not findings.
+export const noteFormatVersion='2026-10-27.performed.v3';
+const cleanText=value=>String(value??'').trim();
+const fullSentence=(label,value)=>{const text=cleanText(value);return text?label+text+(/[.!?。]$/.test(text)?'':'.'):'';};
+const objectParticle=text=>{const last=text.codePointAt(text.length-1);return last>=0xac00&&last<=0xd7a3?(last-0xac00)%28?'을':'를':':';};
+export function performedNarrative(row){
+ const title=exerciseById(row.exerciseId)?.title||'운동 항목 확인 필요',status=row.status;
+ const extras=[fullSentence('실제 반응: ',row.reaction),fullSentence(status==='notdone'?'미실시 사유: ':'중단 사유: ',row.stopReason),fullSentence('기타사항: ',row.memo)];
+ if(!exerciseById(row.exerciseId))return ['운동 항목 확인 필요.',...extras].filter(Boolean).join(' ');
+ if(!['done','stopped','notdone'].includes(status))return [title+' · 수행 상태 확인 필요.',...extras].filter(Boolean).join(' ');
+ if(status==='notdone')return [title+objectParticle(title)+' 실시하지 않음.',...extras].filter(Boolean).join(' ');
+ const valid=key=>!doseErrors({...Object.fromEntries(doseFields.map(([id])=>[id,''])),[key]:row[key]}).length&&row[key]!==''&&row[key]!=null&&cleanText(row[key])!=='';
+ const reps=valid('reps')?row.reps:null,sets=valid('sets')?row.sets:null;
+ const side={both:reps===null?'양측':'좌우 각',left:'왼쪽',right:'오른쪽'}[row.side]||'';
+ const volume=[side,reps!==null?`${reps}회${sets!==null?'씩':''}`:'',sets!==null?`${sets}세트`:'',valid('minutes')?`${row.minutes}분간`:''].filter(Boolean).join(' ');
+ const support={'독립 수행':'독립적으로','감독 / 구두 지시':'감독 및 구두 지시하에','접촉 보조':'접촉 보조하에','최소 도움':'최소 도움하에','중등도 도움':'중등도 도움하에','최대 도움':'최대 도움하에'}[row.assistance]||'';
+ const action=[title+objectParticle(title),volume,support,status==='stopped'?'시도하였으나 중단함.':'실시함.'].filter(Boolean).join(' ');
+ return [action,fullSentence('수행 방법: ',row.method),valid('seconds')?`유지시간: ${reps!==null?'회당 ':''}${row.seconds}초.`:'',!support?fullSentence('도움 수준: ',row.assistance):'',...extras,...doseErrors(row)].filter(Boolean).join(' ');
+}
+export function confirmPlannedPerformance(actual,plan,now=new Date().toISOString()){
+ if(actual.status!=='done'||actual.exerciseId!==plan.exerciseId||doseErrors(plan).length)return false;
+ for(const field of [...doseFields.map(([key])=>key),'side','assistance','method','memo'])actual[field]=plan[field]??'';
+ actual.planConfirmedAt=now;return true;
+}
 export const exercisePurpose=ex=>{const index=ex.sentence.indexOf(',');return index>=0?ex.sentence.slice(index+1).trim():'';};
 export function noteSource(patient,visit,chart){
- return JSON.stringify({patientId:patient.id,identity:patient.identity,visitId:visit.id,serviceDate:chart.serviceDate,therapist:chart.therapist,startTime:chart.startTime,duration:chart.duration,subjective:chart.subjective,beforePain:chart.beforePain,afterPain:chart.afterPain,response:chart.response,homework:chart.homework??chart.education??'',nextVisitDate:chart.nextVisitDate||'',nextVisitTime:chart.nextVisitTime||'',nextPlan:chart.nextPlan,noExerciseReason:chart.noExerciseReason,context:chart.context,plan:chart.plan,performed:chart.performed,serviceRecord:chart.serviceRecord?{...chart.serviceRecord,photos:(chart.serviceRecord.photos||[]).map(photo=>photo?{id:photo.id,width:photo.width,height:photo.height,caption:photo.caption,addedAt:photo.addedAt}:null)}:null,basis:assessmentBasis(patient,chart.context.assessmentVisitId||visit.id)});
+ return JSON.stringify({noteFormatVersion,patientId:patient.id,identity:patient.identity,visitId:visit.id,serviceDate:chart.serviceDate,therapist:chart.therapist,startTime:chart.startTime,duration:chart.duration,subjective:chart.subjective,beforePain:chart.beforePain,afterPain:chart.afterPain,response:chart.response,homework:chart.homework??chart.education??'',nextVisitDate:chart.nextVisitDate||'',nextVisitTime:chart.nextVisitTime||'',nextPlan:chart.nextPlan,noExerciseReason:chart.noExerciseReason,context:chart.context,plan:chart.plan,performed:chart.performed,serviceRecord:chart.serviceRecord?{...chart.serviceRecord,photos:(chart.serviceRecord.photos||[]).map(photo=>photo?{id:photo.id,width:photo.width,height:photo.height,caption:photo.caption,addedAt:photo.addedAt}:null)}:null,basis:assessmentBasis(patient,chart.context.assessmentVisitId||visit.id)});
 }
 export function chartIssues(chart){
  const issues=[];
@@ -95,13 +120,8 @@ export function buildProgressNote(patient,visit,chart){
  const basis=assessmentBasis(patient,c.assessmentVisitId||visit.id);
  section('참고 평가',basis.flatMap(b=>`${b.sequence}회차 (${b.date}) · ${b.title}: ${b.max===null?b.measures.map(m=>`${m.title} ${Array.isArray(m.value)?m.value.join(', '):m.value}${m.unit}`).join(' / '):[b.answered?`${b.complete?'총점':'미완료 부분 점수'} ${b.total}/${b.max}점 · ${b.answered}항목 평가`:'',b.skipped?`미평가 ${b.skipped}항목`:''].filter(Boolean).join(' · ')}`+(b.computed?.length?'\n'+b.computed.filter(row=>!['미측정','계산 전'].includes(row.value)&&!row.value.startsWith('점수 미확정')&&!/입력하세요|선택해 주세요|조건을 확인하면/.test(row.value)).map(row=>`${row.label}: ${row.value}`).join('\n'):'')));
  const plans=chart.plan.filter(row=>!chart.performed.some(actual=>actual.exerciseId===row.exerciseId));
- section('운동 계획',plans.flatMap((row,i)=>{const ex=exerciseById(row.exerciseId);return [`${i+1}. ${ex.title}`,...[exercisePurpose(ex),doseText(row),clean(row.assistance)?`도움 수준: ${clean(row.assistance)}`:'',clean(row.memo)].filter(Boolean).map(text=>'   '+text)];}));
- section('실제 수행 운동',chart.performed.flatMap((row,i)=>{
-  const ex=exerciseById(row.exerciseId);
-  const text=row.status==='notdone'?`${ex.title}: 실시하지 않음.`:row.status==='stopped'?`${ex.title}을 시도하였으나 중단함.${clean(row.stopReason)?' 중단 사유: '+clean(row.stopReason):''}`:ex.sentence;
-  const details=[row.status==='notdone'?'':doseText(row),clean(row.assistance)?`도움 수준: ${clean(row.assistance)}`:'',clean(row.reaction)?`실제 반응: ${clean(row.reaction)}`:'',clean(row.memo)?`메모: ${clean(row.memo)}`:''].filter(Boolean);
-  return [`${i+1}. ${text}`,...(details.length?['   '+details.join(' / ')]:[])];
- }));
+ section('운동 계획',plans.flatMap((row,i)=>{const ex=exerciseById(row.exerciseId);return [`${i+1}. ${ex.title}`,...[exercisePurpose(ex),doseText(row),clean(row.assistance)?`도움 수준: ${clean(row.assistance)}`:'',clean(row.method)?`수행 방법: ${clean(row.method)}`:'',clean(row.memo)].filter(Boolean).map(text=>'   '+text)];}));
+ section('실제 수행 운동',chart.performed.map((row,i)=>`${i+1}. ${performedNarrative(row)}`));
  section('운동 미실시 / 제한 사유',[clean(chart.noExerciseReason)]);
  section('실제 반응 · 관찰',[clean(chart.response),chart.afterPain!==''&&chart.afterPain!=null?`종료 후 통증: ${chart.afterPain}/10`:'']);
  section('운동과제 (운동숙제)',[clean(chart.homework??chart.education)]);

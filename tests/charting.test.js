@@ -31,7 +31,7 @@ test('selected plans generate a plan without claiming actual performance; blank 
 });
 test('notes distinguish confirmed, stopped and explicitly unperformed movements without inventing findings',()=>{
  const {patient,visit}=fixture(),chart=newChart(visit.date);chart.therapist='치료사';chart.beforePain='0';chart.plan=[newPlanItem('01-01')];const performed=newPerformedItem('01-01');performed.reps='7';performed.sets='2';chart.performed=[performed];
- const result=buildProgressNote(patient,visit,chart);assert.equal(result.issues.length,0);assert.match(result.text,/시작 전 통증: 0\/10/);assert.match(result.text,/7회/);assert.match(result.text,/2세트/);assert.match(result.text,/발목을 위아래로 움직이는 운동을 실시/);assert.doesNotMatch(result.text,/10회|3세트|미기록|기능 향상 여부/);
+ const result=buildProgressNote(patient,visit,chart);assert.equal(result.issues.length,0);assert.match(result.text,/시작 전 통증: 0\/10/);assert.match(result.text,/7회/);assert.match(result.text,/2세트/);assert.match(result.text,/발목 굽힘·폄 운동을 좌우 각 7회씩 2세트 실시함/);assert.doesNotMatch(result.text,/10회|3세트|미기록|기능 향상 여부/);
  performed.status='stopped';assert.deepEqual(buildProgressNote(patient,visit,chart).issues,[]);performed.stopReason='피로로 중단';const stopped=buildProgressNote(patient,visit,chart);assert.match(stopped.text,/시도하였으나 중단/);assert.match(stopped.text,/피로로 중단/);assert.doesNotMatch(stopped.text,/발목을 위아래로 움직이는 운동을 실시하여/);
  performed.status='notdone';assert.match(buildProgressNote(patient,visit,chart).text,/실시하지 않음/);assert.doesNotMatch(buildProgressNote(patient,visit,chart).text,/7회/);
 });
