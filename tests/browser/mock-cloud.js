@@ -4,7 +4,7 @@ export function mockCloud(){
  const b64=value=>Buffer.from(JSON.stringify(value)).toString('base64url');
  const token=id=>`${b64({alg:'HS256',typ:'JWT'})}.${b64({sub:id,role:'authenticated',aud:'authenticated',exp:Math.floor(Date.now()/1000)+3600})}.mock_signature`;
  const clone=v=>JSON.parse(JSON.stringify(v));
- for(const [email,user_id] of Object.entries(owners))access.set(user_id,{user_id,email,approved:!email.startsWith('pending')&&!email.startsWith('general'),member_type:email.startsWith('general')?'general':'therapist',patient_limit:1,visit_limit:3,is_admin:user_id===adminId});
+ for(const [email,user_id] of Object.entries(owners))access.set(user_id,{user_id,email,approved:!email.startsWith('pending')&&!email.startsWith('general'),member_type:email.startsWith('general')?'general':'therapist',patient_limit:1,visit_limit:8,is_admin:user_id===adminId});
  return {rows,access,audits,requests,notifications,subscriptions,setOffline:v=>offline=v,async attach(context){await context.route('https://ptcare-test.supabase.co/**',async route=>{
   const req=route.request(),url=new URL(req.url());
   if(offline){await route.abort('internetdisconnected');return;}
@@ -12,7 +12,7 @@ export function mockCloud(){
   if(req.method()==='OPTIONS')return reply({});
   const body=req.postDataJSON?.();
   if(url.pathname==='/auth/v1/signup'){
-   const id=crypto.randomUUID(),email=body.email;owners[email]=id;const member_type=body.data?.member_type==='therapist'?'therapist':'general';access.set(id,{user_id:id,email,member_type,approved:false,patient_limit:1,visit_limit:3,is_admin:false});notifications.push({id:crypto.randomUUID(),kind:'signup',actor_id:id,source_id:id,created_at:new Date().toISOString()});return reply({user:{id,email,user_metadata:{member_type}},session:null});
+   const id=crypto.randomUUID(),email=body.email;owners[email]=id;const member_type=body.data?.member_type==='therapist'?'therapist':'general';access.set(id,{user_id:id,email,member_type,approved:false,patient_limit:1,visit_limit:8,is_admin:false});notifications.push({id:crypto.randomUUID(),kind:'signup',actor_id:id,source_id:id,created_at:new Date().toISOString()});return reply({user:{id,email,user_metadata:{member_type}},session:null});
   }
   if(url.pathname==='/auth/v1/token'){
    const email=body.email||'therapist@example.test',id=owners[email];if(!id)return reply({msg:'Invalid login'},400);

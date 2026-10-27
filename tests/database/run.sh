@@ -40,3 +40,5 @@ docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schem
 docker exec "$container" psql -U postgres -v ON_ERROR_STOP=1 -c "do \$\$begin assert (select count(*) from public.patient_records)=3;assert (select patient_limit from public.therapist_access where user_id='11111111-1111-4111-8111-111111111111')=0;assert (select count(*) from public.platform_admins)=1;assert (select count(*) from public.access_audit)=3;end;\$\$;"
 echo 'PASS: schema reinstallation preserves clinical data, admin role and access grants'
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/membership.sql
+docker cp supabase/upgrade-eight-visits.sql "$container:/tmp/ptcare-upgrade-eight-visits.sql"
+docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/eight-visits.sql

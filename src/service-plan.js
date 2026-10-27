@@ -3,6 +3,7 @@ import {formFor} from './records.js';
 import {workflowProgress} from './assessment-workflow.js';
 import {measurementValueValid} from './extra-assessments.js';
 import {basicSummaryRows,basicSafety,sgdsInterpretation,nrsValid} from './basic-assessment.js';
+import {sarcopeniaAssessment} from './sarcopenia-criteria.js';
 import {clinicalRows} from './musculoskeletal.js';
 export const defaultSessions=[
  ['동의·안전·초기평가','생활 목표 / 필요한 평가 / 안전한 기본과제','평가 조건·도움·반응'],
@@ -21,7 +22,7 @@ export function latestAssessments(patient){
   const a=getAssessment(key,raw.mobility);if(!a||!entered(raw))continue;
   const f=formFor(visit,key),stamp=f.updatedAt||visit.updatedAt||visit.createdAt||visit.date+'T00:00:00Z',prior=latest.get(key);
   if(prior&&prior.updatedAt>stamp)continue;
-  latest.set(key,{key,a,f,visitId:visit.id,sequence:visit.sequence,date:visit.date,updatedAt:stamp});
+  latest.set(key,{key,a,f,visitId:visit.id,sequence:visit.sequence,date:visit.date,visit,updatedAt:stamp});
  }
  return [...latest.values()].sort((a,b)=>a.key.localeCompare(b.key));
 }
@@ -35,6 +36,7 @@ function describe(source){const {a,f,key}=source,s=workflowProgress(a,f,summariz
  if(a.basic)shortText=['현재 '+painText('basic-pain-current'),'휴식 시 '+painText('basic-pain-rest'),'활동 시 '+painText('basic-pain-activity'),(f.fields['basic-pain-patterns']||[]).includes('야간 통증')?'야간 '+painText('basic-pain-night'):'야간통 미선택'].join(' / ')+' (각 NRS 0–10) · '+(Array.isArray(f.fields['basic-diagnoses'])?f.fields['basic-diagnoses']:[]).join(', ')+' · 통증 부위: '+(Array.isArray(f.fields['basic-pain-sites'])?f.fields['basic-pain-sites'].join(', '):'미기록')+(f.fields['basic-pain-site-other']?' '+f.fields['basic-pain-site-other']:'')+' · 일상생활 영향: '+(f.fields['basic-pain-impact']||'미기록')+' · 최근 낙상: '+(f.fields['basic-falls']||'미기록');
  if(a.musculoskeletal){const counts=new Map();for(const field of a.fields){if(field.type!=='select'||!['left','right','center'].some(side=>field.id.endsWith('-'+side)))continue;const value=f.fields[field.id];if(value!==undefined&&value!==''&&value!=='skipped')counts.set(value,(counts.get(value)||0)+1);}shortText=[...counts].map(([value,count])=>value+' '+count+'항목').join(' · ')||'선택된 결과 없음';const details=clinicalRows(a.clinicalKey).flatMap(row=>row.sides.map(side=>{const id=row.id+'-'+side,raw=f.fields[id];if(raw===undefined||raw===''||raw==='skipped'||a.clinicalKey==='rom'&&raw!=='Limited')return null;return row.group.label+' '+row.move.label+' '+(side==='left'?'좌':side==='right'?'우':'공통')+' '+raw+(raw==='Limited'&&f.fields[id+'-degrees']!==undefined&&f.fields[id+'-degrees']!==''?' '+f.fields[id+'-degrees']+'°':'');})).filter(Boolean);if(details.length)shortText+=' · '+details.slice(0,3).join(' / ')+(details.length>3?' · 나머지 '+(details.length-3)+'항목은 상세 평가지 참조':'');}
  if(a.max===null&&!a.basic&&!a.musculoskeletal)shortText=text.length>280?text.slice(0,280)+' · 상세 평가지 참조':text;
+ if(key==='sarcopenia'){const integrated=sarcopeniaAssessment(f.fields,{visit:source.visit});if(integrated){text+=' / '+integrated.rows.map(x=>x.label+': '+x.value).join(' / ');shortText=integrated.guideline+' · '+integrated.conclusion+' / '+integrated.rows.find(x=>x.label==='근육량 대조').value;}}
  return {key,title:a.title,shortText,sequence:source.sequence,date:source.date,updatedAt:source.updatedAt,complete:s.complete,total:a.max===null?null:s.total,answered:s.answered,text};
 }
 export function servicePlanInput(patient){const sources=latestAssessments(patient);return JSON.stringify({identity:patient.identity,sources:sources.map(x=>({key:x.key,date:x.date,visitId:x.visitId,updatedAt:x.updatedAt,answers:x.f.answers,fields:x.f.fields,mobility:x.f.mobility,note:x.f.note})),config:patient.servicePlan?.config||{}});}

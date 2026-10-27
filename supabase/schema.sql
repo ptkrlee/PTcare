@@ -34,9 +34,23 @@ create table if not exists public.therapist_access (
  user_id uuid primary key references auth.users(id) on delete cascade,
  approved boolean not null default false,
  patient_limit integer not null default 1 check(patient_limit between 0 and 100000),
- visit_limit integer not null default 3 check(visit_limit between 0 and 100000),
+ visit_limit integer not null default 8 check(visit_limit between 0 and 100000),
  updated_at timestamptz not null default now()
 );
+do $quota$
+begin
+ lock table public.therapist_access in access exclusive mode;
+ if (select column_default from information_schema.columns
+     where table_schema='public' and table_name='therapist_access'
+       and column_name='visit_limit') <> '8' then
+  alter table public.therapist_access alter column visit_limit set default 8;
+  update public.therapist_access
+     set visit_limit=8, updated_at=now()
+   where visit_limit between 1 and 7;
+ end if;
+end;
+$quota$;
+
 create table if not exists public.platform_admins (
  user_id uuid primary key references auth.users(id) on delete cascade
 );

@@ -13,7 +13,7 @@ export function workflowProgress(a,f,s){
   if(key==='sts')required=['sts-count','sts-arms','sts-single-right','sts-single-left','sts-five-time'];
   if(key==='one-leg')required=a.fields.map(x=>x.id);
   if(key==='tug')required=['tug-distance','tug-pace','tug-assistance','tug-population','tug-original'];
-  if(key==='circumference')required=a.fields.map(x=>x.id);
+  if(key==='circumference')required=a.fields.filter(x=>!['body-calf-protocol','body-calf-caution'].includes(x.id)).map(x=>x.id);
   if(key==='sarcopenia')required=['asm-method'];
   complete=required.length>0&&required.every(valid);
   if(key==='sts')complete=complete&&fields['sts-arms']!=='미실시'&&!['미실시','skipped'].includes(fields['sts-single-right'])&&!['미실시','skipped'].includes(fields['sts-single-left']);

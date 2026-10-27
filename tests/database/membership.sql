@@ -41,7 +41,7 @@ do $$declare denied boolean:=false;begin
  perform public.admin_resolve_access_request('abababab-abab-4bab-8bab-abababababab','rejected','not approved');
 end;$$;
 set request.jwt.claim.sub='77777777-7777-4777-8777-777777777777';
-do $$declare a jsonb;begin a:=public.my_access();assert (a->>'visit_limit')::int=5,'credits not granted exactly once';assert (a->>'patient_limit')::int=1,'rejection changed quota';assert jsonb_array_length(public.my_access_requests())=3;end;$$;
+do $$declare a jsonb;begin a:=public.my_access();assert (a->>'visit_limit')::int=10,'credits not granted exactly once';assert (a->>'patient_limit')::int=1,'rejection changed quota';assert jsonb_array_length(public.my_access_requests())=3;end;$$;
 set role service_role;
 do $$declare jobs jsonb;job jsonb;begin
  jobs:=public.claim_admin_push_batch(null);assert jsonb_array_length(jobs)>=2,'new requests not queued';

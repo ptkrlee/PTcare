@@ -1,7 +1,7 @@
 import {criterionState} from './timed-criteria.js';
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-10-27.evidence.v6';
+export const scoringVersion='2026-10-27.sarcopenia.v7';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
@@ -64,6 +64,7 @@ evidence.push(
  {id:'awgs-editorial-2025',keys:['sarcopenia','grip','sts'],title:'Won & Jung. AWGS 2025 지침 소개 사설. Ann Geriatr Med Res. 2025;29:421–423',url:'https://doi.org/10.4235/agmr.25.0207',detail:'50–64세까지 관리 대상 확대를 소개하지만 수치 기준표·진단 알고리즘이 없는 사설입니다. 인용된 AWGS 2025 합의문 원문과 표가 필요합니다. 이 파일만으로 악력·ASM·5회 STS 절단값을 만들지 않습니다.'},
  {id:'imacs-mmt',keys:['mmt'],title:'IMACS Form 04 · Manual Muscle Testing Procedures (첨부 1–3쪽)',url:'',detail:'Kendall 변형 등급표의 0·T·2−·2·2+·3−·3·3+·4−·4·4+·5를 사용. 3− 서서히 내려오기 3초 이상, 3 검사 자세 3초 유지, 저항 적용 3초. 0–10 대응값을 MMT 0–5 등급과 혼합·합산하지 않음.'},
  {id:'kfacs-sts-2021',keys:['sts'],title:'Kim & Won. Cut Points of Chair Stand Test… JAMDA (사용자 제공 초록)',url:'https://doi.org/10.1016/j.jamda.2021.11.007',detail:'한국 KFACS 70–84세 지역사회 거주자, 기초 2,977명·2년 추적 2,515명. 5회 STS 10.8초·12.8초 경계값. 초록에 상세 시행법과 경계 포함 규칙이 없어 수치 비교만 제공하며 30초/1분 STS나 SPPB 배점으로 바꾸지 않음.'},
+ {id:'lim-2025',keys:['sarcopenia','grip','sts','sppb','circumference','tug'],title:'임재영. 근감소증의 정의, 검사 방법 및 진단기준에 대한 고찰. J Korean Diabetes. 2025;26:80–89',url:'https://doi.org/10.4093/jkd.2025.26.2.80',detail:'82–86쪽·표1. AWGS 2019/KWGS 악력 남<28/여<18kg; DXA 남<7.0/여<5.4, BIA 남<7.0/여<5.7kg/m²; SPPB≤9, 5회 STS≥12초; KWGS TUG≥12초. EWGSOP2 악력 남<27/여<16kg, 5회STS≥15초, SPPB<9, TUG≥20초. 종아리 남<34/여<33cm, SARC-F≥4는 선별. 보행1.0m/s는 본문≤/표1< 불일치로 정확히1.00은 유보. 2025년에 출판된 AWGS 2019/KWGS 종설이며 AWGS2025 원문이 아님. 5회STS 종료 방식과 프로토콜을 구분하고 다른 날짜 자료를 자동 합치지 않음.'},
  {id:'tagliafico-2022',keys:['sarcopenia','grip','sts'],title:'Tagliafico et al. Sarcopenia: how to measure, when and why. Radiol Med. 2022;127:228–237 (첨부 원문)',url:'https://doi.org/10.1007/s11547-022-01450-3',detail:'근력 저하·근육량/질 저하·신체기능 저하를 구분. 232쪽 DXA 본문: 남성 ALMI <7.0, 여성 <5.5 kg/m²; 표1 AWGS 2014: 남성 ≤7.0, 여성 ≤5.4. 서로 다른 판본·비교연산자를 구분해 선택한 DXA 기준만 비교. BIA 수분 상태의 한계를 명시하며 최신 AWGS 2025 수치표는 아님.'},
  {id:'ph-sts-2024',keys:['sts'],title:'ERS Congress 2024, Eur Respir J 64 Suppl.68 PA2505 (사용자 첨부 초록 이미지)',url:'',detail:'폐고혈압 114명, 1분 STS 14.5회가 6MWT 165m 미만 식별: 민감도 69%, 특이도 100%. 학회 초록이며 전문 없음. 기존 30초 STS·5회 STS·일반 고령자 낙상 절단값으로 사용하지 않음.'}
 );
