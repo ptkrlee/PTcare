@@ -1,3 +1,4 @@
+import {reviewedExperience,feedbackChoices,matchedCaseFocus} from './case-learning.js';
 import {basicSafety} from '../basic-assessment.js';
 import {latestAssessments} from '../service-plan.js';
 import {criterionState,timedCriterion,bbsTimed} from '../timed-criteria.js';
@@ -22,7 +23,7 @@ export const exercises=library.map(item=>({...item,bilateral:sidedExercises.has(
 const byId=new Map(exercises.map(ex=>[ex.id,ex]));
 export const exerciseById=id=>byId.get(id);
 export function newChart(serviceDate=''){
- return {version:2,serviceDate,therapist:'',startTime:'',duration:'',subjective:'',beforePain:'',afterPain:'',response:'',homework:'',nextVisitDate:'',nextVisitTime:'',nextPlan:'',noExerciseReason:'',context:{capability:'',goals:[],equipment:[],safety:'',precautions:'',instruction:'',proneAllowed:false,assessmentVisitId:''},plan:[],performed:[],draft:'',draftSource:'',generatedAt:null,reviewed:null,history:[]};
+ return {version:2,serviceDate,therapist:'',startTime:'',duration:'',subjective:'',beforePain:'',afterPain:'',response:'',homework:'',nextVisitDate:'',nextVisitTime:'',nextPlan:'',noExerciseReason:'',context:{capability:'',goals:[],equipment:[],safety:'',precautions:'',instruction:'',proneAllowed:false,assessmentVisitId:'',useReviewedHistory:true,caseFocus:[]},plan:[],performed:[],draft:'',draftSource:'',generatedAt:null,reviewed:null,history:[]};
 }
 export function chartFor(visit){const base=newChart(visit.date),saved=visit.chart||{};return {...base,...saved,homework:saved.homework??saved.education??'',context:{...base.context,...saved.context},plan:saved.plan||[],performed:saved.performed||[],history:saved.history||[]};}
 export function assessmentBasis(patient,visitId){
@@ -49,34 +50,37 @@ export function recommend(patient,visit,chart){
  if(c.precautions?.trim())return {items:[],basis,blocked:'주의·제한사항이 기록되어 있습니다. 자동 추천은 보류하고 치료사가 개별적으로 운동을 검토해 선택하세요.'};
  if(level<0)return {items:[],basis,blocked:'치료사가 직접 확인한 현재 가능한 자세·이동 수준을 선택해 주세요.'};
  const signals=basis.flatMap(b=>b.items.filter(item=>item.score<item.max&&deficitGoals[item.id]).map(item=>({goals:deficitGoals[item.id],reason:`${b.title} · ${item.title}: ${item.score}/${item.max}점 (${item.label})`}))); 
- const candidates=exercises.filter(ex=>ex.minLevel<=level&&ex.required.every(item=>(c.equipment||[]).includes(item))&&(!ex.prone||c.proneAllowed));
+ const experience=reviewedExperience(patient,visit,{enabled:c.useReviewedHistory!==false});
+ const candidates=exercises.filter(ex=>experience.byExercise.get(ex.id)?.feedback!=='avoid'&&ex.minLevel<=level&&ex.required.every(item=>(c.equipment||[]).includes(item))&&(!ex.prone||c.proneAllowed));
  const ranked=candidates.map(ex=>{
   const matched=(c.goals||[]).filter(goal=>ex.goals.includes(goal));
   const relevant=signals.filter(signal=>signal.goals.some(goal=>ex.goals.includes(goal)));
   const reasons=[...matched.map(goal=>`치료사가 선택한 목표: ${goal}`),...relevant.slice(0,2).map(signal=>signal.reason)];
-  const score=matched.length*10+Math.min(relevant.length,3)*3+ex.minLevel;
+  const focus=matchedCaseFocus(ex.id,c.caseFocus||[]);if(focus.length)reasons.push('치료사가 선택한 현재 중점과 사례 패턴: '+focus.join(', '));
+  const learned=experience.byExercise.get(ex.id);if(learned)reasons.push(`같은 대상자 ${learned.sequence}회차 검토 피드백: ${learned.feedback==='suitable'?'적합': '조정 필요'}`);
+  const score=matched.length*10+Math.min(relevant.length,3)*3+ex.minLevel+Math.min(focus.length,2)*4+(learned?.feedback==='suitable'?3:learned?.feedback==='adjust'?-2:0);
   return {...ex,rank:score,reasons:reasons.length?reasons:[`치료사가 확인한 가능 수준: ${capabilities[level][1]}`]};
  }).sort((a,b)=>b.rank-a.rank||a.id.localeCompare(b.id));
  // Keep variety rather than recommending three variants of a single movement category.
  const selected=[],perGroup=new Map();for(const ex of ranked){if((perGroup.get(ex.category)||0)>=2)continue;selected.push(ex);perGroup.set(ex.category,(perGroup.get(ex.category)||0)+1);if(selected.length===3)break;}
- return {items:selected,basis,blocked:selected.length?'':'가능 자세에 맞는 도구를 확인해 주세요. 치료사가 목록에서 운동을 직접 선택할 수도 있습니다.'};
+ return {items:selected,basis,experience:{reviewCount:experience.reviewCount,feedbackCount:experience.feedbackCount,excluded:[...experience.byExercise].filter(([,x])=>x.feedback==='avoid').length,enabled:c.useReviewedHistory!==false},blocked:selected.length?'':'가능 자세에 맞는 도구를 확인해 주세요. 치료사가 목록에서 운동을 직접 선택할 수도 있습니다.'};
 }
 export const defaultDose=Object.freeze({sets:'3',reps:'10',seconds:'3',minutes:''});
 export const sides=[['total','전체 횟수'],['both','좌우 각각'],['left','왼쪽'],['right','오른쪽']];
-export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',method:'',memo:''};}
-export function newPerformedItem(exerciseId){return {...newPlanItem(exerciseId),sets:'',reps:'',seconds:'',minutes:'',status:'done',reaction:'',stopReason:''};}
+export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',method:'',cue:'',memo:''};}
+export function newPerformedItem(exerciseId){return {...newPlanItem(exerciseId),sets:'',reps:'',seconds:'',minutes:'',status:'done',reaction:'',stopReason:'',compensation:'',adjustment:'',feedback:''};}
 export const doseFields=[['sets','세트','세트',100],['reps','반복','회',1000],['seconds','유지 시간','초',3600],['minutes','시간','분',240]];
 export function doseErrors(item){return doseFields.flatMap(([key,label,,max])=>{const value=item[key];if(value===''||value==null)return [];const n=Number(value);return Number.isFinite(n)&&n>0&&n<=max&&(key==='minutes'||key==='seconds'||Number.isInteger(n))?[]:[`${label} 입력을 확인해 주세요.`];});}
 export function doseText(item){return doseFields.filter(([key])=>item[key]!==''&&item[key]!=null).map(([key,label,unit])=>`${key==='reps'?({both:'좌우 각 ',left:'왼쪽 ',right:'오른쪽 '}[item.side]||''):key==='sets'?'':label+' '}${item[key]}${unit}`).join(' · ');}
 // A single formatter drives live previews, clinical drafts and the service sheet.
 // Only actual entered values are narrated; library purposes and planned doses are not findings.
-export const noteFormatVersion='2026-10-27.performed.v3';
+export const noteFormatVersion='2026-10-31.cases.v4';
 const cleanText=value=>String(value??'').trim();
 const fullSentence=(label,value)=>{const text=cleanText(value);return text?label+text+(/[.!?。]$/.test(text)?'':'.'):'';};
 const objectParticle=text=>{const last=text.codePointAt(text.length-1);return last>=0xac00&&last<=0xd7a3?(last-0xac00)%28?'을':'를':':';};
 export function performedNarrative(row){
  const title=exerciseById(row.exerciseId)?.title||'운동 항목 확인 필요',status=row.status;
- const extras=[fullSentence('실제 반응: ',row.reaction),fullSentence(status==='notdone'?'미실시 사유: ':'중단 사유: ',row.stopReason),fullSentence('기타사항: ',row.memo)];
+ const extras=[fullSentence('실제 반응: ',row.reaction),fullSentence(status==='notdone'?'미실시 사유: ':'중단 사유: ',row.stopReason),fullSentence('기타사항: ',row.memo),fullSentence('다음 회차 검토: ',feedbackChoices.find(([id])=>id===row.feedback)?.[1])];
  if(!exerciseById(row.exerciseId))return ['운동 항목 확인 필요.',...extras].filter(Boolean).join(' ');
  if(!['done','stopped','notdone'].includes(status))return [title+' · 수행 상태 확인 필요.',...extras].filter(Boolean).join(' ');
  if(status==='notdone')return [title+objectParticle(title)+' 실시하지 않음.',...extras].filter(Boolean).join(' ');
@@ -86,11 +90,11 @@ export function performedNarrative(row){
  const volume=[side,reps!==null?`${reps}회${sets!==null?'씩':''}`:'',sets!==null?`${sets}세트`:'',valid('minutes')?`${row.minutes}분간`:''].filter(Boolean).join(' ');
  const support={'독립 수행':'독립적으로','감독 / 구두 지시':'감독 및 구두 지시하에','접촉 보조':'접촉 보조하에','최소 도움':'최소 도움하에','중등도 도움':'중등도 도움하에','최대 도움':'최대 도움하에'}[row.assistance]||'';
  const action=[title+objectParticle(title),volume,support,status==='stopped'?'시도하였으나 중단함.':'실시함.'].filter(Boolean).join(' ');
- return [action,fullSentence('수행 방법: ',row.method),valid('seconds')?`유지시간: ${reps!==null?'회당 ':''}${row.seconds}초.`:'',!support?fullSentence('도움 수준: ',row.assistance):'',...extras,...doseErrors(row)].filter(Boolean).join(' ');
+ return [action,fullSentence('수행 방법: ',row.method),fullSentence('제공한 단서·설명: ',row.cue),fullSentence('관찰한 보상동작: ',row.compensation),fullSentence('현장 조정: ',row.adjustment),valid('seconds')?`유지시간: ${reps!==null?'회당 ':''}${row.seconds}초.`:'',!support?fullSentence('도움 수준: ',row.assistance):'',...extras,...doseErrors(row)].filter(Boolean).join(' ');
 }
 export function confirmPlannedPerformance(actual,plan,now=new Date().toISOString()){
  if(actual.status!=='done'||actual.exerciseId!==plan.exerciseId||doseErrors(plan).length)return false;
- for(const field of [...doseFields.map(([key])=>key),'side','assistance','method','memo'])actual[field]=plan[field]??'';
+ for(const field of [...doseFields.map(([key])=>key),'side','assistance','method','cue','memo'])actual[field]=plan[field]??'';
  actual.planConfirmedAt=now;return true;
 }
 export const exercisePurpose=ex=>{const index=ex.sentence.indexOf(',');return index>=0?ex.sentence.slice(index+1).trim():'';};
@@ -120,7 +124,7 @@ export function buildProgressNote(patient,visit,chart){
  const basis=assessmentBasis(patient,c.assessmentVisitId||visit.id);
  section('참고 평가',basis.flatMap(b=>`${b.sequence}회차 (${b.date}) · ${b.title}: ${b.max===null?b.measures.map(m=>`${m.title} ${Array.isArray(m.value)?m.value.join(', '):m.value}${m.unit}`).join(' / '):[b.answered?`${b.complete?'총점':'미완료 부분 점수'} ${b.total}/${b.max}점 · ${b.answered}항목 평가`:'',b.skipped?`미평가 ${b.skipped}항목`:''].filter(Boolean).join(' · ')}`+(b.computed?.length?'\n'+b.computed.filter(row=>!['미측정','계산 전'].includes(row.value)&&!row.value.startsWith('점수 미확정')&&!/입력하세요|선택해 주세요|조건을 확인하면/.test(row.value)).map(row=>`${row.label}: ${row.value}`).join('\n'):'')));
  const plans=chart.plan.filter(row=>!chart.performed.some(actual=>actual.exerciseId===row.exerciseId));
- section('운동 계획',plans.flatMap((row,i)=>{const ex=exerciseById(row.exerciseId);return [`${i+1}. ${ex.title}`,...[exercisePurpose(ex),doseText(row),clean(row.assistance)?`도움 수준: ${clean(row.assistance)}`:'',clean(row.method)?`수행 방법: ${clean(row.method)}`:'',clean(row.memo)].filter(Boolean).map(text=>'   '+text)];}));
+ section('운동 계획',plans.flatMap((row,i)=>{const ex=exerciseById(row.exerciseId);return [`${i+1}. ${ex.title}`,...[exercisePurpose(ex),doseText(row),clean(row.assistance)?`도움 수준: ${clean(row.assistance)}`:'',clean(row.method)?`수행 방법: ${clean(row.method)}`:'',clean(row.cue)?`제공할 단서·설명: ${clean(row.cue)}`:'',clean(row.memo)].filter(Boolean).map(text=>'   '+text)];}));
  section('실제 수행 운동',chart.performed.map((row,i)=>`${i+1}. ${performedNarrative(row)}`));
  section('운동 미실시 / 제한 사유',[clean(chart.noExerciseReason)]);
  section('실제 반응 · 관찰',[clean(chart.response),chart.afterPain!==''&&chart.afterPain!=null?`종료 후 통증: ${chart.afterPain}/10`:'']);
