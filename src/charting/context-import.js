@@ -1,0 +1,33 @@
+import {chartFor,capabilities,goals,equipment} from './engine.js';
+import {caseFocusChoices} from './case-learning.js';
+import {escape as e,icon} from '../icons.js';
+export const basicFields=[['therapist','치료사 성명'],['capability','가능 자세·이동 수준 (이전 기록 참고)'],['goals','대상자의 목표'],['equipment','사용 도구 (이번 방문 재확인)'],['precautions','주의·제한사항'],['instruction','과제 지시 이해·필요한 설명/도움'],['caseFocus','운동 중점']];
+export function basicValues(visit){const c=chartFor(visit),text=v=>typeof v==='string'?v.trim():'',choices=(value,allowed)=>Array.isArray(value)?[...new Set(value.filter(x=>allowed.includes(x)))]:[];
+ return {therapist:text(c.therapist),capability:capabilities.some(([id])=>id===c.context.capability)?c.context.capability:'',goals:choices(c.context.goals,goals),equipment:choices(c.context.equipment,equipment.map(([id])=>id)),precautions:text(c.context.precautions),instruction:text(c.context.instruction),caseFocus:choices(c.context.caseFocus,caseFocusChoices)};}
+const filled=v=>Array.isArray(v)?v.length>0:typeof v==='string'&&v.trim()!=='';
+export function previousContextVisits(patient,targetId){const target=patient.visits.find(x=>x.id===targetId);if(!target)return [];return patient.visits.filter(v=>v.id!==target.id&&Number(v.sequence)<Number(target.sequence)&&v.date<=target.date&&v.chart&&Object.values(basicValues(v)).some(filled)).sort((a,b)=>Number(b.sequence)-Number(a.sequence)||b.date.localeCompare(a.date));}
+export function prepareBasicImport(patient,targetId,sourceId,fields,{overwrite=false,now=new Date().toISOString()}={}){
+ const target=patient.visits.find(x=>x.id===targetId),source=previousContextVisits(patient,targetId).find(x=>x.id===sourceId);if(!target||!source)throw new Error('같은 대상자의 이전 운동기록을 선택해 주세요.');
+ const values=basicValues(source),current=basicValues(target),chart=structuredClone(chartFor(target)),imported=[],kept=[];
+ for(const [key] of basicFields){if(!fields.includes(key)||!filled(values[key]))continue;if(!overwrite&&filled(current[key])){kept.push(key);continue;}if(key==='therapist')chart.therapist=values[key];else chart.context[key]=structuredClone(values[key]);imported.push(key);}
+ const requiresSafetyReview=imported.some(key=>key!=='therapist');if(imported.length){if(requiresSafetyReview){chart.context.safety='';chart.context.proneAllowed=false;}chart.reviewed=null;chart.basicImport={sourceVisitId:source.id,sourceSequence:source.sequence,sourceDate:source.date,fields:imported,importedAt:now,overwrite,requiresSafetyReview};}
+ return {chart,imported,kept,requiresSafetyReview};
+}
+export function renderBasicImport(patient,visit){const previous=previousContextVisits(patient,visit.id),origin=patient.visits.find(x=>x.id===visit.chart?.basicImport?.sourceVisitId);return `<div class="basic-import-panel"><h3>이전 기록에서 기본 정보 가져오기</h3><div class="basic-import-controls"><label>가져올 회차<select id="basic-import-source" ${previous.length?'':'disabled'}>${previous.length?previous.map(v=>`<option value="${e(v.id)}">${e(v.sequence)}회차 · ${e(v.date)}</option>`).join(''):'<option>가져올 이전 운동기록이 없습니다</option>'}</select></label><button class="button secondary" type="button" id="import-basic-context" ${previous.length?'':'disabled'}>${icon('sheet')} 이전 기본 정보 가져오기</button></div><p class="helper">목표·도구·주의사항·설명 등을 선택해 가져옵니다. 기본 설정은 현재 빈칸만 채우며, 안전 확인과 엎드린 자세 가능 여부는 이번 방문에 다시 확인합니다.</p><p id="basic-import-status" role="status">${origin?`기본 정보 가져온 이력: ${e(origin.sequence)}회차 · ${e(origin.date)}. 현재 상태에 맞게 확인·수정해 주세요.`:''}</p></div>`;}
+const display=(key,value)=>key==='capability'?capabilities.find(([id])=>id===value)?.[1]||'미기록':key==='equipment'?value.map(id=>equipment.find(([v])=>v===id)?.[1]||id).join(', '):Array.isArray(value)?value.join(', '):value;
+export function bindBasicImport(o,{refresh}){const button=document.querySelector('#import-basic-context');if(!button)return;
+ button.onclick=()=>{
+  const initial=o.getRecord(),targetId=initial.visit.id,patientId=initial.patient.id,sourceId=document.querySelector('#basic-import-source').value;
+  const source=previousContextVisits(initial.patient,targetId).find(v=>v.id===sourceId);if(!source)return;
+  const values=basicValues(source),current=basicValues(initial.visit),expected=JSON.stringify({values,current,safety:chartFor(initial.visit).context.safety,proneAllowed:chartFor(initial.visit).context.proneAllowed});
+  o.modal(`<h2>${e(source.sequence)}회차 기본 정보 가져오기</h2><p class="helper">${e(source.date)} 기록을 참고합니다. 이전 안전 확인·엎드린 자세 확인·통증·실제 수행·반응·사진·검토본은 복사하지 않습니다.</p><div class="basic-import-fields">${basicFields.map(([key,label])=>`<label><span><input type="checkbox" data-import-basic="${key}" ${filled(values[key])?'checked':'disabled'}> ${e(label)}</span><small>${e(filled(values[key])?display(key,values[key]):'이전 기록 없음')}${filled(current[key])?' · 현재 입력값 있음':''}</small></label>`).join('')}</div><label class="basic-import-overwrite"><input type="checkbox" id="basic-import-overwrite"> 이미 입력한 항목도 선택한 이전 값으로 바꾸기</label><p class="helper">체크하지 않으면 현재 입력한 항목을 유지합니다. 가져온 가능 수준·도구·주의사항은 현재 상태에 맞게 수정해 주세요.</p><p id="basic-import-error" role="alert"></p><div class="dialog-actions"><button class="button secondary" type="button" data-close>취소</button><button class="button primary" type="button" id="confirm-basic-import">선택한 기본 정보 가져오기</button></div>`);
+  document.querySelector('#confirm-basic-import').onclick=()=>{
+   const error=document.querySelector('#basic-import-error');if(!button.isConnected){error.textContent='화면이 변경되었습니다. 창을 닫고 다시 선택해 주세요.';return;}
+   const latest=o.getRecord(),fresh=previousContextVisits(latest.patient,targetId).find(v=>v.id===sourceId);if(latest.patient.id!==patientId||latest.visit.id!==targetId||!fresh){error.textContent='대상자·회차를 다시 확인해 주세요.';return;}
+   if(JSON.stringify({values:basicValues(fresh),current:basicValues(latest.visit),safety:chartFor(latest.visit).context.safety,proneAllowed:chartFor(latest.visit).context.proneAllowed})!==expected){error.textContent='이전 기록 또는 현재 입력이 변경되었습니다. 창을 닫고 최신 내용으로 다시 선택해 주세요.';return;}
+   const fields=[...document.querySelectorAll('[data-import-basic]:checked')].map(x=>x.dataset.importBasic),overwrite=document.querySelector('#basic-import-overwrite').checked,result=prepareBasicImport(latest.patient,targetId,sourceId,fields,{overwrite});
+   if(!result.imported.length){error.textContent=fields.length?'현재 입력값은 유지했습니다. 바꿀 항목을 선택하고 덮어쓰기 옵션을 확인해 주세요.':'가져올 항목을 하나 이상 선택해 주세요.';return;}
+   o.updateChart(c=>Object.assign(c,result.chart));o.closeModal();refresh();document.querySelector('#basic-import-status').textContent=`${fresh.sequence}회차에서 ${result.imported.length}개 항목을 가져왔습니다.${result.kept.length?' 현재 입력한 '+result.kept.length+'개 항목은 유지했습니다.':''}${result.requiresSafetyReview?' 이번 방문의 안전·도구·자세를 다시 확인해 주세요.':''}`;
+  };
+ };
+}
