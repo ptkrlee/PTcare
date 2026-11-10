@@ -7,7 +7,7 @@ const field=(page,key)=>page.locator(`[data-chart-field="${key}"]`);
 
 test('patient charting has all examples, separates plan from actual, generates and reviews a printable note',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-3').check();await openChart(page);
- await expect(page.locator('#library-count')).toContainText('90개');
+ await expect(page.locator('#library-count')).toContainText('97개');
  await field(page,'therapist').fill('테스트 치료사');await field(page,'subjective').fill('앉은 자세에서 발목 운동을 희망함.');
  await addPlan(page);await page.locator('#generate-note').click();await expect(page.locator('#chart-validation')).toBeEmpty();await expect(page.locator('#note-draft')).toHaveValue(/좌우 각 10회/);await expect(page.locator('#note-draft')).not.toHaveValue(/실제 수행 운동|미기록/);
  await page.locator('[data-entry-kind=plan][data-entry-field=reps]').fill('12');await confirmActual(page);
@@ -26,7 +26,7 @@ test('recommendations are blocked until confirmed and cannot silently replace th
  await field(page,'context.precautions').fill('부하 제한 확인 필요');await page.locator('#recommend-plan').click();await expect(page.locator('#recommendations')).toContainText('보류');await expect(page.locator('[data-recommend]')).toHaveCount(0);
 });
 test('unfinished chart inputs and manual draft survive leaving offline; mobile chart and program print fit',async({page,context})=>{
- const cloud=mockCloud();await cloud.attach(context);await page.setViewportSize({width:390,height:844});await login(page);await patient(page);await openChart(page);await addPlan(page);await expect(page.locator('[data-save-status]')).toHaveText('서버 저장 완료');
+ const cloud=mockCloud();await cloud.attach(context);await page.setViewportSize({width:390,height:844});await login(page);await patient(page);await openChart(page);await page.locator('[data-step-all]').click();await addPlan(page);await expect(page.locator('[data-save-status]')).toHaveText('서버 저장 완료');
  cloud.setOffline(true);await field(page,'response').fill('마지막 관찰 한 글자까지');await page.locator('#note-draft').fill('직접 편집한 미완료 기록');const url=page.url();await page.goto('about:blank');await page.goto(url);await expect(field(page,'response')).toHaveValue('마지막 관찰 한 글자까지');await expect(page.locator('#note-draft')).toHaveValue('직접 편집한 미완료 기록');
  for(const width of [320,390,768,1280]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}
  await page.setViewportSize({width:1280,height:1000});await page.locator('#chart-context').scrollIntoViewIfNeeded();await page.screenshot({path:'/tmp/ptcare-charting-desktop.png'});

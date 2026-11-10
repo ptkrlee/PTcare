@@ -4,6 +4,7 @@ import {latestAssessments} from '../service-plan.js';
 import {criterionState,timedCriterion,bbsTimed} from '../timed-criteria.js';
 import {workflowProgress} from '../assessment-workflow.js';
 import library from './exercises.json' with {type:'json'};
+import {scenarioExercises,scenarioMethods} from './scenario-exercises.js';
 import groups from './categories.json' with {type:'json'};
 import {formFor} from '../records.js';
 import {getAssessment,summarize} from '../data.js';
@@ -19,7 +20,7 @@ const required={
 };
 const specificLevels={'04-01':1,'04-02':1,'04-03':1,'08-01':2,'08-02':2,'08-03':2,'08-09':3,'08-10':5};
 const sidedExercises=new Set(['01-01','01-02','01-03','01-04','01-07','01-08','01-10','02-01','02-02','02-03','02-08','03-03','03-05','03-06','03-07','03-09','05-02','05-06','05-07','06-01','06-04','06-05','06-06','06-07','06-08','06-09','06-10']);
-export const exercises=library.map(item=>({...item,bilateral:sidedExercises.has(item.id),minLevel:specificLevels[item.id]??baseLevel[item.category],goals:[...groupGoals[item.category],...(/팔|어깨|견갑|컵|세면/.test(item.title)?['상지 움직임']:[])],required:[...((['01','02'].includes(item.category))?['bed']:['03','04'].includes(item.category)?['chair']:[]),...(required[item.id]||[])],prone:['02-07','02-08'].includes(item.id)}));
+export const exercises=[...library,...scenarioExercises].map(item=>({...item,scenario:scenarioMethods[item.id],manualOnly:scenarioExercises.some(ex=>ex.id===item.id),bilateral:item.bilateral??sidedExercises.has(item.id),minLevel:specificLevels[item.id]??baseLevel[item.category],goals:[...groupGoals[item.category],...(/팔|어깨|견갑|컵|세면/.test(item.title)?['상지 움직임']:[])],required:[...((['01','02'].includes(item.category))?['bed']:['03','04'].includes(item.category)?['chair']:[]),...(required[item.id]||[])],prone:['02-07','02-08'].includes(item.id)}));
 const byId=new Map(exercises.map(ex=>[ex.id,ex]));
 export const exerciseById=id=>byId.get(id);
 export function newChart(serviceDate=''){
@@ -51,7 +52,7 @@ export function recommend(patient,visit,chart){
  if(level<0)return {items:[],basis,blocked:'치료사가 직접 확인한 현재 가능한 자세·이동 수준을 선택해 주세요.'};
  const signals=basis.flatMap(b=>b.items.filter(item=>item.score<item.max&&deficitGoals[item.id]).map(item=>({goals:deficitGoals[item.id],reason:`${b.title} · ${item.title}: ${item.score}/${item.max}점 (${item.label})`}))); 
  const experience=reviewedExperience(patient,visit,{enabled:c.useReviewedHistory!==false});
- const candidates=exercises.filter(ex=>experience.byExercise.get(ex.id)?.feedback!=='avoid'&&ex.minLevel<=level&&ex.required.every(item=>(c.equipment||[]).includes(item))&&(!ex.prone||c.proneAllowed));
+ const candidates=exercises.filter(ex=>!ex.manualOnly&&experience.byExercise.get(ex.id)?.feedback!=='avoid'&&ex.minLevel<=level&&ex.required.every(item=>(c.equipment||[]).includes(item))&&(!ex.prone||c.proneAllowed));
  const ranked=candidates.map(ex=>{
   const matched=(c.goals||[]).filter(goal=>ex.goals.includes(goal));
   const relevant=signals.filter(signal=>signal.goals.some(goal=>ex.goals.includes(goal)));
