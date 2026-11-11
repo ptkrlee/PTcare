@@ -1,3 +1,4 @@
+import {scoringVersion} from './clinical-scoring.js';
 import {getAssessment,summarize} from './data.js';
 import {formFor} from './records.js';
 import {workflowProgress} from './assessment-workflow.js';
@@ -39,7 +40,7 @@ function describe(source){const {a,f,key}=source,s=workflowProgress(a,f,summariz
  if(key==='sarcopenia'){const integrated=sarcopeniaAssessment(f.fields,{visit:source.visit});if(integrated){text+=' / '+integrated.rows.map(x=>x.label+': '+x.value).join(' / ');shortText=integrated.guideline+' · '+integrated.conclusion+' / '+integrated.rows.find(x=>x.label==='근육량 대조').value;}}
  return {key,title:a.title,shortText,sequence:source.sequence,date:source.date,updatedAt:source.updatedAt,complete:s.complete,total:a.max===null?null:s.total,answered:s.answered,text};
 }
-export function servicePlanInput(patient){const sources=latestAssessments(patient);return JSON.stringify({identity:patient.identity,sources:sources.map(x=>({key:x.key,date:x.date,visitId:x.visitId,updatedAt:x.updatedAt,answers:x.f.answers,fields:x.f.fields,mobility:x.f.mobility,note:x.f.note})),config:patient.servicePlan?.config||{}});}
+export function servicePlanInput(patient){const sources=latestAssessments(patient);return JSON.stringify({scoringVersion,identity:patient.identity,sources:sources.map(x=>({key:x.key,date:x.date,visitId:x.visitId,updatedAt:x.updatedAt,answers:x.f.answers,fields:x.f.fields,mobility:x.f.mobility,note:x.f.note})),config:patient.servicePlan?.config||{}});}
 export function deriveServicePlan(patient,reflectedAt=new Date().toISOString()){
  const sources=latestAssessments(patient),summary=sources.map(describe),config=patient.servicePlan?.config||{},basic=sources.find(x=>x.key==='basic'),mood=sources.find(x=>x.key==='sgds');
  const risks=basic?basicSafety(basic.f.fields):[],focus=[];

@@ -1,3 +1,4 @@
+import {secondsInputMax,hasHundredthPrecision} from './time-input.js';
 // Criterion confirmation is distinct from an observed duration. Never persist an
 // assumed duration or derive speed from a checked criterion.
 export const modeKey=id=>id+'-criterion';
@@ -11,7 +12,7 @@ export function timedCriterion(id,fields={}){
 export function timeBands(id,fields={}){
  if(id==='sppb-tandem')return [{value:'range-1',label:'3초 이상–10초 미만 · 1점',score:1,min:3,max:10,maxOpen:true},{value:'range-0',label:'3초 미만 · 0점',score:0,min:0,max:3,maxOpen:true}];
  if(id==='sppb-gait-1'||id==='sppb-gait-2'){const three=Number(fields['sppb-distance']??4)===3;return [{value:'range-3',label:(three?'3.62–4.65':'4.82–6.20')+'초 · 3점',score:3,min:three?3.62:4.82,max:three?4.66:6.21,maxOpen:true},{value:'range-2',label:(three?'4.66–6.52':'6.21–8.70')+'초 · 2점',score:2,min:three?4.66:6.21,max:three?6.52:8.70},{value:'range-1',label:(three?'6.52':'8.70')+'초 초과 · 1점',score:1,min:three?6.52:8.70,minOpen:true,max:3600}];}
- if(id==='sppb-chair-time')return [{value:'range-3',label:'11.20–13.69초 · 3점',score:3,min:11.20,max:13.70,maxOpen:true},{value:'range-2',label:'13.70–16.69초 · 2점',score:2,min:13.70,max:16.70,maxOpen:true},{value:'range-1',label:'16.70–60초 · 1점',score:1,min:16.70,max:60},{value:'range-0',label:'60초 초과 · 0점',score:0,min:60,minOpen:true,max:3600}];
+ if(id==='sppb-chair-time')return [{value:'range-3',label:'11.20–13.69초 · 3점',score:3,min:11.20,max:13.70,maxOpen:true},{value:'range-2',label:'13.70–16.69초 · 2점',score:2,min:13.70,max:16.70,maxOpen:true},{value:'range-1',label:'16.70–60초 · 1점',score:1,min:16.70,max:60},{value:'range-0',label:'60초 초과 · 0점',score:0,min:60,minOpen:true,max:secondsInputMax(id)}];
  return [];
 }
 export const timeRequired=(id,fields={})=>fields[modeKey(id)]==='measured'||fields[modeKey(id)]==='below'&&!(id==='sppb-side'||id==='sppb-semi'||id.startsWith('ols-'));
@@ -21,7 +22,7 @@ export function criterionState(id,fields={}){
  const c=timedCriterion(id,fields),mode=fields[modeKey(id)],raw=fields[id];
  const present=raw!==''&&raw!==null&&raw!==undefined;
  const n=present&&raw!=='skipped'?Number(raw):NaN;
- const numeric=Number.isFinite(n)&&n>=0&&(!id.startsWith('sppb-gait')&&id!=='sppb-chair-time'||n>0)&&n<=(['sppb-side','sppb-semi','sppb-tandem'].includes(id)?10:3600)&&Math.abs(n*100-Math.round(n*100))<1e-6;
+ const numeric=Number.isFinite(n)&&n>=0&&(!id.startsWith('sppb-gait')&&id!=='sppb-chair-time'||n>0)&&n<=secondsInputMax(id)&&hasHundredthPrecision(n);
  const band=timeBands(id,fields).find(b=>b.value===mode),coarseBelow=mode==='below'&&!timeRequired(id,fields);
  if(!c||!['passed','below'].includes(mode)&&!band)return {active:false};
  if(raw==='skipped')return {active:false};
@@ -42,5 +43,5 @@ export function bbsTimeValid(item,form){
  const rule=bbsTimed[item.id],answer=form.answers[item.id];if(!rule||!Number.isInteger(answer))return true;
  const ids=rule.bilateral?[item.id+'-seconds-right',item.id+'-seconds-left']:[item.id+'-seconds'];
  if(form.fields[item.id+'-time-required']!=='required'&&ids.every(id=>form.fields[id]===undefined||form.fields[id]===''))return true;
- return ids.every(id=>{const raw=form.fields[id];if(raw==null||raw===''||raw==='skipped')return true;const n=Number(raw);if(raw==null||raw===''||raw==='skipped'||!Number.isFinite(n)||n<0||n>3600||Math.abs(n*100-Math.round(n*100))>1e-6)return false;if(answer===4&&rule.direction==='at-most'&&n===0)return false;return answer!==4||meetsCriterion(n,{...rule,direction:rule.direction||'at-least'});});
+ return ids.every(id=>{const raw=form.fields[id];if(raw==null||raw===''||raw==='skipped')return true;const n=Number(raw);if(raw==null||raw===''||raw==='skipped'||!Number.isFinite(n)||n<0||n>secondsInputMax(id)||!hasHundredthPrecision(n))return false;if(answer===4&&rule.direction==='at-most'&&n===0)return false;return answer!==4||meetsCriterion(n,{...rule,direction:rule.direction||'at-least'});});
 }

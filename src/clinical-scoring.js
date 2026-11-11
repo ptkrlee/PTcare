@@ -1,13 +1,14 @@
+import {secondsInputMax,hasHundredthPrecision} from './time-input.js';
 import {criterionState} from './timed-criteria.js';
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-11-11.time-ranges.v8';
+export const scoringVersion='2026-11-11.time-limits.v9';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
-const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
+const hold=(v,id)=>present(v)&&v!=='skipped'&&Number(v)>=0&&Number(v)<=secondsInputMax(id)&&hasHundredthPrecision(Number(v))?Number(v):null;
 const row=(score,reason,extra={})=>({score,reason,...extra});
 export function scoreSPPB(f={}){
- const duration=id=>{const c=criterionState(id,f);return c.active?(c.valid?(c.actual??(c.confirmed?10:c.bandScore===1&&id==='sppb-tandem'?3:0)):null):hold(f[id]);};
+ const duration=id=>{const c=criterionState(id,f);return c.active?(c.valid?(c.actual??(c.confirmed?10:c.bandScore===1&&id==='sppb-tandem'?3:0)):null):hold(f[id],id);};
  const side=duration('sppb-side'),semi=duration('sppb-semi'),tandem=duration('sppb-tandem');
  const result={};
  if(f['sppb-balance-status']==='불가능')result['sppb-balance']=row(0,'도움 없이 자세 유지 불가로 기록함.');
@@ -18,8 +19,8 @@ export function scoreSPPB(f={}){
  else if(semi<10)result['sppb-balance']=row(1,'양발 모아 서기 1점 + 반일렬 자세 0점.');
  else if(tandem===null)result['sppb-balance']=row(null,'일렬 자세 시간을 입력하세요.',{skipped:f['sppb-tandem']==='skipped'});
  else result['sppb-balance']=row(2+(tandem>=10?2:tandem>=3?1:0),'양발 모아 서기 1점 + 반일렬 1점 + 일렬 자세 '+(tandem>=10?'2':tandem>=3?'1':'0')+'점.');
- // Later balance stages are not standard-valid after a failed earlier stage.
- if((side!==null&&side<10&&(semi!==null||tandem!==null))||(semi!==null&&semi<10&&tandem!==null))result['sppb-balance']=row(null,'앞 자세에서 10초 미만이면 다음 자세를 시행하지 않습니다. 실제 시행 순서와 시간을 확인하세요.');
+ // Stop scoring at the first failed balance stage. Retain later observations without adding points.
+ if(f['sppb-balance-status']!=='불가능'&&f['sppb-balance-status']!=='미실시'&&f['sppb-balance-status']!=='skipped'&&((side!==null&&side<10&&(semi!==null||tandem!==null))||(semi!==null&&semi<10&&tandem!==null)))result['sppb-balance'].reason+=' · 앞 자세의 10초 미만 종료 기준을 적용합니다. 이후 자세 기록은 추가 관찰로 보존하며 균형 배점에 포함하지 않습니다.';
  const distance=present(f['sppb-distance'])?Number(f['sppb-distance']):4;
  const times=['sppb-gait-1','sppb-gait-2'].map(id=>positive(f[id])).filter(v=>v!==null&&v<=3600);
  if(f['sppb-gait-status']==='불가능')result['sppb-gait']=row(0,'보행 수행 불가로 기록함.');
@@ -41,7 +42,7 @@ export function scoreSPPB(f={}){
  else if(criterionState('sppb-chair-time',f).active&&!criterionState('sppb-chair-time',f).valid)result['sppb-chair']=row(null,'선택한 시간 기준과 실제 의자 일어서기 시간을 확인하세요.');
  else if(Number.isInteger(criterionState('sppb-chair-time',f).bandScore)&&f['sppb-chair-single']==='팔 사용 없이 가능')result['sppb-chair']=row(criterionState('sppb-chair-time',f).bandScore,'팔 사용 없이 5회 · 선택한 시간 구간으로 채점 (실제 시간 미입력).');
  else if(criterionState('sppb-chair-time',f).confirmed&&f['sppb-chair-single']==='팔 사용 없이 가능')result['sppb-chair']=row(4,'팔 사용 없이 5회 · 11.19초 이하 기준 충족 확인 (실제 시간은 별도 기록).');
- else if(chair===null||chair>3600)result['sppb-chair']=row(null,'5회 일어서기 시간을 입력하세요. 0초는 유효한 시간이 아닙니다.',{skipped:f['sppb-chair-time']==='skipped'});
+ else if(chair===null||chair>secondsInputMax('sppb-chair-time'))result['sppb-chair']=row(null,'5회 일어서기 시간을 입력하세요. 0초는 유효한 시간이 아닙니다.',{skipped:f['sppb-chair-time']==='skipped'});
  else if(f['sppb-chair-single']!=='팔 사용 없이 가능')result['sppb-chair']=row(null,'팔을 사용하지 않고 일어섰는지 확인해 주세요.');
  else result['sppb-chair']=row(chair>60?0:chair>=16.70?1:chair>=13.70?2:chair>=11.20?3:4,chair>60?'60초 초과: 0점.':`팔 사용 없이 5회 · ${chair.toFixed(2)}초.`);
  for(const id of ['sppb-side','sppb-semi','sppb-tandem']){const c=criterionState(id,f);if(c.active&&!c.valid)result['sppb-balance']=row(null,c.reason);}

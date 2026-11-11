@@ -15,7 +15,7 @@ test('SPPB balance follows the required progression, distinguishing deferred fro
  assert.equal(balance({'sppb-side':'9.99'}).score,0);assert.equal(balance({'sppb-side':'10','sppb-semi':'9.99'}).score,1);
  for(const [time,expected] of [[0,2],[2.99,2],[3,3],[9.99,3],[10,4]])assert.equal(balance({'sppb-side':'10','sppb-semi':'10','sppb-tandem':String(time)}).score,expected);
  assert.equal(balance({}).score,null);assert.equal(balance({'sppb-side':'skipped'}).skipped,true);
- assert.equal(balance({'sppb-side':'9','sppb-semi':'10'}).score,null);assert.equal(balance({'sppb-side':'11'}).score,null);
+ assert.equal(balance({'sppb-side':'9','sppb-semi':'10'}).score,0);assert.equal(balance({'sppb-side':'11'}).score,null);
  assert.equal(balance({'sppb-balance-status':'불가능'}).score,0);assert.equal(balance({'sppb-balance-status':'미실시'}).score,null);
 });
 test('SPPB picks the faster valid trial and requires no-arm chair confirmation',()=>{

@@ -11,7 +11,7 @@ test('SPPB checked criteria score without manufacturing actual seconds or walkin
  for(const id of ['sppb-side','sppb-semi','sppb-tandem','sppb-gait-1','sppb-chair-time'])assert.equal(f[id],undefined);
 });
 test('failed timing criteria need actual seconds; strict upper and inclusive lower boundaries remain exact',()=>{
- for(const [id,mode,raw,valid] of [['sppb-side','below','',true],['sppb-side','below','9.99',true],['sppb-side','below','10',false],['sppb-side','passed','9.99',false],['sppb-side','passed','11',false],['sppb-gait-1','passed','4.82',false],['sppb-gait-1','passed','4.81',true],['sppb-gait-1','passed','0',false],['sppb-chair-time','passed','0',false],['sppb-chair-time','passed','11.19',true],['ols-open-right','passed','29.99',false],['ols-open-right','below','29.99',true]])assert.equal(criterionState(id,{[modeKey(id)]:mode,[id]:raw}).valid,valid,`${id} ${mode} ${raw}`);
+ for(const [id,mode,raw,valid] of [['sppb-side','below','',true],['sppb-side','below','9.99',true],['sppb-side','below','10',false],['sppb-side','passed','9.99',false],['sppb-side','passed','11',true],['sppb-gait-1','passed','4.82',false],['sppb-gait-1','passed','4.81',true],['sppb-gait-1','passed','0',false],['sppb-chair-time','passed','0',false],['sppb-chair-time','passed','11.19',true],['ols-open-right','passed','29.99',false],['ols-open-right','below','29.99',true]])assert.equal(criterionState(id,{[modeKey(id)]:mode,[id]:raw}).valid,valid,`${id} ${mode} ${raw}`);
  const r=scoreSPPB({'sppb-side':'10','sppb-semi':'10','sppb-tandem-criterion':'below'});assert.equal(r['sppb-balance'].score,null);
 });
 test('BBS choices complete without optional seconds while entered conflicting times are rejected',()=>{
