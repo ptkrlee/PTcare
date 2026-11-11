@@ -11,12 +11,12 @@ test('SPPB checked criteria score without manufacturing actual seconds or walkin
  for(const id of ['sppb-side','sppb-semi','sppb-tandem','sppb-gait-1','sppb-chair-time'])assert.equal(f[id],undefined);
 });
 test('failed timing criteria need actual seconds; strict upper and inclusive lower boundaries remain exact',()=>{
- for(const [id,mode,raw,valid] of [['sppb-side','below','',false],['sppb-side','below','9.99',true],['sppb-side','below','10',false],['sppb-side','passed','9.99',false],['sppb-side','passed','11',false],['sppb-gait-1','passed','4.82',false],['sppb-gait-1','passed','4.81',true],['sppb-gait-1','passed','0',false],['sppb-chair-time','passed','0',false],['sppb-chair-time','passed','11.19',true],['ols-open-right','passed','29.99',false],['ols-open-right','below','29.99',true]])assert.equal(criterionState(id,{[modeKey(id)]:mode,[id]:raw}).valid,valid,`${id} ${mode} ${raw}`);
+ for(const [id,mode,raw,valid] of [['sppb-side','below','',true],['sppb-side','below','9.99',true],['sppb-side','below','10',false],['sppb-side','passed','9.99',false],['sppb-side','passed','11',false],['sppb-gait-1','passed','4.82',false],['sppb-gait-1','passed','4.81',true],['sppb-gait-1','passed','0',false],['sppb-chair-time','passed','0',false],['sppb-chair-time','passed','11.19',true],['ols-open-right','passed','29.99',false],['ols-open-right','below','29.99',true]])assert.equal(criterionState(id,{[modeKey(id)]:mode,[id]:raw}).valid,valid,`${id} ${mode} ${raw}`);
  const r=scoreSPPB({'sppb-side':'10','sppb-semi':'10','sppb-tandem-criterion':'below'});assert.equal(r['sppb-balance'].score,null);
 });
-test('completion needs actual BBS times below top criteria and includes both rotation directions',()=>{
+test('BBS choices complete without optional seconds while entered conflicting times are rejected',()=>{
  const a=getAssessment('bbs'),f={fields:{},answers:Object.fromEntries(a.items.map(x=>[x.id,4]))};assert.equal(progress('bbs',f).complete,true);
- f.fields['bbs-10-time-required']='required';f.answers['bbs-10']=3;assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-right']='4';assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-left']='8';assert.equal(progress('bbs',f).complete,true);
+ f.fields['bbs-10-time-required']='required';f.answers['bbs-10']=3;assert.equal(progress('bbs',f).complete,true);f.fields['bbs-10-seconds-right']='4';assert.equal(progress('bbs',f).complete,true);f.fields['bbs-10-seconds-left']='8';assert.equal(progress('bbs',f).complete,true);
  f.answers['bbs-10']=4;assert.equal(progress('bbs',f).complete,false);f.fields['bbs-10-seconds-left']='0';assert.equal(progress('bbs',f).complete,false);
  assert.deepEqual(Object.keys(bbsTimed),['bbs-1','bbs-2','bbs-5','bbs-6','bbs-10','bbs-11','bbs-12','bbs-13']);
 });
@@ -35,10 +35,10 @@ test('automatic charting retains criterion confirmations and does not invent mea
  const basis=assessmentBasis(p,'visit');assert.equal(basis.length,1);assert.equal(basis[0].measures.length,1);assert.match(basis[0].measures[0].value,/통과 · 30초 이상/);assert.match(basis[0].measures[0].value,/실제 시간 미입력/);assert.equal(basis[0].complete,false);
 });
 
-test('legacy BBS scores remain complete without newly introduced times; new edits require raw times',()=>{
+test('legacy and edited BBS choices remain complete without optional times',()=>{
  const a=getAssessment('bbs'),f={updatedAt:'2026-10-22T00:00:00Z',fields:{},answers:Object.fromEntries(a.items.map((x,i)=>[x.id,i%5]))};
  assert.equal(progress('bbs',f).complete,true);assert.equal(progress('bbs',f).completedAt,f.updatedAt);
- f.fields['bbs-1-time-required']='required';assert.equal(progress('bbs',f).complete,false);f.fields['bbs-1-seconds']='60';assert.equal(progress('bbs',f).complete,true);
+ f.fields['bbs-1-time-required']='required';assert.equal(progress('bbs',f).complete,true);f.fields['bbs-1-seconds']='60';assert.equal(progress('bbs',f).complete,true);
  f.answers['bbs-0']='skipped';assert.equal(progress('bbs',f).complete,false);
 });
 

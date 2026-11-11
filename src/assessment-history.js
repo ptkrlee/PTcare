@@ -1,3 +1,4 @@
+import {criterionState} from './timed-criteria.js';
 import {assessmentClosed} from './assessment-closure.js';
 import {assessmentOrder,getAssessment} from './data.js';
 import {formFor} from './records.js';
@@ -16,7 +17,7 @@ export function hasAssessmentRecord(visit,key){
  const fields=f.fields||{},specs=new Set((a.fields||[]).map(field=>field.id));
  return Object.entries(fields).some(([id,value])=>{
   if(setup.has(id)||/-(regions|education|examiner)$/.test(id)||id==='rom-mode')return false;
-  if(id.endsWith('-criterion'))return value==='passed';
+  if(id.endsWith('-criterion')){const base=id.slice(0,-10);if(!specs.has(base))return false;const c=criterionState(base,fields);return c.active&&c.valid;}
   if(/^bbs-\d+-seconds(?:-right|-left)?$/.test(id))return entered(value);
   return specs.has(id)&&entered(value);
  });

@@ -6,8 +6,8 @@ import {getAssessment,summarize} from '../src/data.js';
 import {newForm} from '../src/records.js';
 import {hasAssessmentRecord} from '../src/assessment-history.js';
 const status=(a,f)=>workflowProgress(a,f,summarize(a,f.answers,f.fields));
-test('BBS reminder names missing timed conditions even after all 14 scores were chosen; closing never alters scores',()=>{
- const a=getAssessment('bbs'),f=newForm();for(const item of a.items)f.answers[item.id]=3;f.fields['bbs-1-time-required']='required';const before=structuredClone({answers:f.answers,fields:f.fields}),s=status(a,f),missing=closureReminder(a,f,s);
+test('BBS reminder names invalid entered times even after all 14 scores were chosen; closing never alters scores',()=>{
+ const a=getAssessment('bbs'),f=newForm();for(const item of a.items)f.answers[item.id]=3;f.fields['bbs-1-time-required']='required';f.fields['bbs-1-seconds']='bad';const before=structuredClone({answers:f.answers,fields:f.fields}),s=status(a,f),missing=closureReminder(a,f,s);
  assert.equal(s.answered,14);assert.equal(s.complete,false);assert.ok(missing.some(text=>text.includes(a.items[1].title)&&text.includes('실제 수행 시간')));
  f.closure={at:'2026-11-11T09:00:00Z',by:'therapist',source:closureSource(f),missing};const done=status(a,f);assert.equal(done.closed,true);assert.equal(done.complete,false);assert.equal(done.total,s.total);assert.deepEqual({answers:f.answers,fields:f.fields},before);
  f.fields['bbs-1-seconds']='40';assert.equal(status(a,f).closed,false);

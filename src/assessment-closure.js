@@ -28,3 +28,33 @@ export function closureReminder(a,f,s){
  for(const field of a.fields||[]){const value=fields[field.id];if(field.type!=='number'||value==null||value===''||value==='skipped')continue;if(a.basic&&field.id==='basic-pain-night'&&!(fields['basic-pain-patterns']||[]).includes('야간 통증'))continue;if(a.clinicalKey==='rom'&&field.id.endsWith('-degrees')&&fields[field.id.slice(0,-8)]!=='Limited')continue;if(!valid(field.id))missing.push(field.label+' · 입력값 확인');}
  return [...new Set(missing.length?missing:['평가 시행 조건 또는 필수 측정값 확인'])];
 }
+// Link each reminder to its actual input; labels remain the same in the confirmation and print records.
+export function unresolvedTargets(a,f,s){
+ const fields=f.fields||{},known=a.fields||[],valid=id=>{const c=criterionState(id,fields),spec=known.find(x=>x.id===id);return c.active?c.valid:!!spec&&measurementValueValid(spec,fields[id]);};
+ const stage=()=>{for(const id of ['sppb-side','sppb-semi','sppb-tandem'])if(!valid(id))return id;const below=id=>{const c=criterionState(id,fields);return c.active?c.actual!==undefined?c.actual<10:!c.confirmed:Number(fields[id])<10;};if(below('sppb-side'))return 'sppb-semi';if(below('sppb-semi'))return 'sppb-tandem';return 'sppb-tandem';};
+ return closureReminder(a,f,s).map(label=>{
+  const spec=known.find(field=>label===field.label||label.startsWith(field.label+' ·'));
+  if(spec)return {label,id:spec.id};
+  if(label.startsWith('평가 전 확인'))return {label,id:'basic-confirmations'};
+  if(label==='교육연수')return {label,id:'moca-k-education'};
+  if(label==='검사할 부위 선택')return {label,id:a.clinicalKey+'-regions'};
+  if(label.startsWith('ASM 지수'))return {label,id:'asm-index'};
+  const item=a.items.find(item=>label===item.title||label.startsWith(item.title+' ·'));
+  if(item){
+   if(item.id==='sppb-balance')return {label,id:stage()};
+   if(item.id==='sppb-gait')return {label,id:['sppb-gait-1','sppb-gait-2'].find(id=>!valid(id))||'sppb-gait-1'};
+   if(item.id==='sppb-chair')return {label,id:!valid('sppb-chair-single')?'sppb-chair-single':'sppb-chair-time'};
+   if(label.includes('실제 수행 시간')){const ids=item.id==='bbs-10'?[item.id+'-seconds-right',item.id+'-seconds-left']:[item.id+'-seconds'];const id=ids.find(id=>!bbsTimeValid(item,{...f,fields:Object.fromEntries(Object.entries(fields).filter(([key])=>!ids.includes(key)||key===id))}))||ids[0];return {label,id};}
+   if(item.id.includes('-recall-')){const prefix=item.id.split('-recall-')[0];if(fields[prefix+'-recall-status']!=='실시함')return {label,id:prefix+'-recall-status'};}
+   return {label,id:item.id};
+  }
+  return {label,id:'assessment-title'};
+ });
+}
+export function highlightUnresolved(id,root=document){
+ let node=root.getElementById?root.getElementById(id):root.querySelector('[id="'+id+'"]');node||=root.querySelector('[data-field="'+id+'"]');if(!node)return false;
+ const target=node.closest('.measurement-field,.question-card,.clinical-movement,.memory-checks,.basic-section,.clinical-scope')||node;
+ for(let parent=target;parent;parent=parent.parentElement)if(parent.tagName==='DETAILS')parent.open=true;
+ root.querySelectorAll('.unresolved-highlight').forEach(el=>el.classList.remove('unresolved-highlight'));
+ target.classList.add('unresolved-highlight');target.setAttribute('tabindex','-1');target.scrollIntoView({block:'center',behavior:'instant'});target.focus({preventScroll:true});return true;
+}

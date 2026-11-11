@@ -1,13 +1,13 @@
 import {criterionState} from './timed-criteria.js';
 // Rules transcribed from user-provided SPPB protocol and CDC STEADI / TUG documents.
 // Numeric cutoffs apply only to the explicitly selected population and protocol.
-export const scoringVersion='2026-10-27.sarcopenia.v7';
+export const scoringVersion='2026-11-11.time-ranges.v8';
 const present=v=>v!==''&&v!==undefined&&v!==null;
 const positive=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>0&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const hold=v=>present(v)&&v!=='skipped'&&Number.isFinite(Number(v))&&Number(v)>=0&&Number(v)<=10&&Math.abs(Number(v)*100-Math.round(Number(v)*100))<0.000001?Number(v):null;
 const row=(score,reason,extra={})=>({score,reason,...extra});
 export function scoreSPPB(f={}){
- const duration=id=>{const c=criterionState(id,f);return c.active?(c.valid?(c.actual??10):null):hold(f[id]);};
+ const duration=id=>{const c=criterionState(id,f);return c.active?(c.valid?(c.actual??(c.confirmed?10:c.bandScore===1&&id==='sppb-tandem'?3:0)):null):hold(f[id]);};
  const side=duration('sppb-side'),semi=duration('sppb-semi'),tandem=duration('sppb-tandem');
  const result={};
  if(f['sppb-balance-status']==='불가능')result['sppb-balance']=row(0,'도움 없이 자세 유지 불가로 기록함.');
@@ -26,7 +26,10 @@ export function scoreSPPB(f={}){
  else if(f['sppb-gait-status']==='미실시'||f['sppb-gait-status']==='skipped')result['sppb-gait']=row(null,'미평가 · 다음에 하기',{skipped:true});
  else if(![3,4].includes(distance))result['sppb-gait']=row(null,'보행 거리는 3m 또는 4m를 선택하세요.');
  else if(['sppb-gait-1','sppb-gait-2'].some(id=>criterionState(id,f).active&&!criterionState(id,f).valid))result['sppb-gait']=row(null,'선택한 시간 기준과 실제 보행 시간을 확인하세요.');
- else if(['sppb-gait-1','sppb-gait-2'].some(id=>{const c=criterionState(id,f);return c.valid&&c.confirmed&&c.actual===undefined;}))result['sppb-gait']=row(4,`${distance}m 최상위 시간 기준 충족 확인 · 실제 시간 미입력 시 보행 속도는 계산하지 않습니다.`);
+ else if(['sppb-gait-1','sppb-gait-2'].some(id=>{const c=criterionState(id,f);return c.valid&&Number.isInteger(c.bandScore)&&c.actual===undefined;})){
+  const scores=['sppb-gait-1','sppb-gait-2'].flatMap(id=>{const c=criterionState(id,f);if(c.valid&&Number.isInteger(c.bandScore))return [c.bandScore];const t=positive(f[id]);return t&&t<=3600?[distance===4?(t>8.70?1:t>=6.21?2:t>=4.82?3:4):(t>6.52?1:t>=4.66?2:t>=3.62?3:4)]:[];});
+  result['sppb-gait']=row(Math.max(...scores),`${distance}m 시간 구간 선택으로 채점 · 실제 시간 미입력 구간이 있어 대표 보행 시간·속도는 계산하지 않습니다.`);
+ }
  else if(!times.length)result['sppb-gait']=row(null,'보행 시간을 입력하세요. 0초는 유효한 시간이 아닙니다.',{skipped:['sppb-gait-1','sppb-gait-2'].some(id=>f[id]==='skipped')});
  else{
   const best=Math.min(...times),score=distance===4?(best>8.70?1:best>=6.21?2:best>=4.82?3:4):(best>6.52?1:best>=4.66?2:best>=3.62?3:4);
@@ -36,6 +39,7 @@ export function scoreSPPB(f={}){
  if(f['sppb-chair-status']==='불가능'||f['sppb-chair-single']==='팔 사용 / 수행 불가')result['sppb-chair']=row(0,'5회 수행 불가 또는 팔을 사용하여 수행함.');
  else if(['미실시','skipped'].includes(f['sppb-chair-status'])||['미실시','skipped'].includes(f['sppb-chair-single']))result['sppb-chair']=row(null,'미평가 · 다음에 하기',{skipped:true});
  else if(criterionState('sppb-chair-time',f).active&&!criterionState('sppb-chair-time',f).valid)result['sppb-chair']=row(null,'선택한 시간 기준과 실제 의자 일어서기 시간을 확인하세요.');
+ else if(Number.isInteger(criterionState('sppb-chair-time',f).bandScore)&&f['sppb-chair-single']==='팔 사용 없이 가능')result['sppb-chair']=row(criterionState('sppb-chair-time',f).bandScore,'팔 사용 없이 5회 · 선택한 시간 구간으로 채점 (실제 시간 미입력).');
  else if(criterionState('sppb-chair-time',f).confirmed&&f['sppb-chair-single']==='팔 사용 없이 가능')result['sppb-chair']=row(4,'팔 사용 없이 5회 · 11.19초 이하 기준 충족 확인 (실제 시간은 별도 기록).');
  else if(chair===null||chair>3600)result['sppb-chair']=row(null,'5회 일어서기 시간을 입력하세요. 0초는 유효한 시간이 아닙니다.',{skipped:f['sppb-chair-time']==='skipped'});
  else if(f['sppb-chair-single']!=='팔 사용 없이 가능')result['sppb-chair']=row(null,'팔을 사용하지 않고 일어섰는지 확인해 주세요.');
