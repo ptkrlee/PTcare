@@ -7,7 +7,7 @@ const field=(page,key)=>page.locator(`[data-chart-field="${key}"]`);
 
 test('patient charting has all examples, separates plan from actual, generates and reviews a printable note',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-3').check();await openChart(page);
- await expect(page.locator('#library-count')).toContainText('97개');
+ await expect(page.locator('#library-count')).toContainText('128개');
  await field(page,'therapist').fill('테스트 치료사');await field(page,'subjective').fill('앉은 자세에서 발목 운동을 희망함.');
  await addPlan(page);await page.locator('#generate-note').click();await expect(page.locator('#chart-validation')).toBeEmpty();await expect(page.locator('#note-draft')).toHaveValue(/좌우 각 10회/);await expect(page.locator('#note-draft')).not.toHaveValue(/실제 수행 운동|미기록/);
  await page.locator('[data-entry-kind=plan][data-entry-field=reps]').fill('12');await confirmActual(page);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {exercises,groups,newChart,newPlanItem,newPerformedItem,recommend,buildProgressNote,noteSource,canReview,assessmentBasis,doseErrors,chartFor,doseText} from '../src/charting/engine.js';
 const fixture=()=>{const visit={id:'visit',sequence:1,date:'2026-10-22',forms:{bbs:{answers:{'bbs-0':1,'bbs-1':'skipped'},fields:{},updatedAt:'2026-10-22'}}};const patient={id:'patient',identity:{name:'가상 대상자',birth:'1950-01-01'},visits:[visit]};return {patient,visit};};
 test('all 90 source examples are present once across nine ten-item groups',()=>{
- assert.equal(exercises.length,97);assert.equal(new Set(exercises.map(ex=>ex.id)).size,97);assert.equal(groups.length,9);
+ assert.equal(exercises.length,128);assert.equal(new Set(exercises.map(ex=>ex.id)).size,128);assert.equal(groups.length,9);
  for(const group of groups)assert.equal(exercises.filter(ex=>ex.category===group.id&&Number(ex.id.slice(3))<=10).length,10);
  for(const ex of exercises.filter(ex=>Number(ex.id.slice(3))<=10)){assert.ok(ex.title.length>0);assert.ok(ex.sentence.length>20);assert.match(ex.sentence,/도모함|도움을 주고자 함/);assert.doesNotMatch(ex.sentence,/\f/);}
 });

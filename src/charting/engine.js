@@ -5,6 +5,7 @@ import {criterionState,timedCriterion,bbsTimed} from '../timed-criteria.js';
 import {workflowProgress} from '../assessment-workflow.js';
 import library from './exercises.json' with {type:'json'};
 import {scenarioExercises,scenarioMethods} from './scenario-exercises.js';
+import approvedExercises from './approved-exercises.json' with {type:'json'};
 import groups from './categories.json' with {type:'json'};
 import {formFor} from '../records.js';
 import {getAssessment,summarize} from '../data.js';
@@ -12,7 +13,7 @@ import {computedMeasurements,measurementValueValid} from '../extra-assessments.j
 export {groups};
 export const capabilities=[['bed','침상에서 운동 가능'],['sitting','안정적으로 앉기 가능'],['transfer','도움을 받아 자리 이동 가능'],['standing','지지물을 사용한 서기 가능'],['dynamic','지지하에 동적 서기 가능'],['walking','보조·감독하 실내 보행 가능'],['outdoor','치료사 확인하 실외 활동 가능']];
 export const goals=['침상 이동','앉은 균형','일어서기','서기 균형','보행','일상생활','실외 활동','상지 움직임','하지 근력'];
-export const equipment=[['bed','안전한 침상'],['chair','고정된 의자'],['support','고정된 지지물'],['band','탄력밴드'],['walker','보행기'],['cane','지팡이'],['wheelchair','휠체어'],['step','낮은 발판'],['rail','난간'],['cup','빈 컵'],['towel','수건']];
+export const equipment=[['bed','안전한 침상'],['chair','고정된 의자'],['support','고정된 지지물'],['band','탄력밴드'],['walker','보행기'],['cane','지팡이'],['wheelchair','휠체어'],['step','낮은 발판'],['rail','난간'],['cup','빈 컵'],['towel','수건'],['floor','안전한 매트·바닥'],['ball','가벼운 공'],['target','고정된 목표표시'],['daily','안전한 생활도구'],['sound','박자 음원·메트로놈'],['obstacle','낮은 고정 장애물']];
 const groupGoals={'01':['침상 이동','하지 근력'],'02':['침상 이동','앉은 균형'],'03':['앉은 균형','하지 근력'],'04':['일어서기','하지 근력'],'05':['서기 균형','하지 근력'],'06':['서기 균형','보행'],'07':['보행'],'08':['일상생활'],'09':['실외 활동','보행']};
 const baseLevel={'01':0,'02':1,'03':1,'04':3,'05':3,'06':4,'07':5,'08':1,'09':6};
 const required={
@@ -20,7 +21,7 @@ const required={
 };
 const specificLevels={'04-01':1,'04-02':1,'04-03':1,'08-01':2,'08-02':2,'08-03':2,'08-09':3,'08-10':5};
 const sidedExercises=new Set(['01-01','01-02','01-03','01-04','01-07','01-08','01-10','02-01','02-02','02-03','02-08','03-03','03-05','03-06','03-07','03-09','05-02','05-06','05-07','06-01','06-04','06-05','06-06','06-07','06-08','06-09','06-10']);
-export const exercises=[...library,...scenarioExercises].map(item=>({...item,scenario:scenarioMethods[item.id],manualOnly:scenarioExercises.some(ex=>ex.id===item.id),bilateral:item.bilateral??sidedExercises.has(item.id),minLevel:specificLevels[item.id]??baseLevel[item.category],goals:[...groupGoals[item.category],...(/팔|어깨|견갑|컵|세면/.test(item.title)?['상지 움직임']:[])],required:[...((['01','02'].includes(item.category))?['bed']:['03','04'].includes(item.category)?['chair']:[]),...(required[item.id]||[])],prone:['02-07','02-08'].includes(item.id)}));
+export const exercises=[...library,...scenarioExercises,...approvedExercises].map(item=>({...item,scenario:scenarioMethods[item.id],manualOnly:item.manualOnly??scenarioExercises.some(ex=>ex.id===item.id),bilateral:item.bilateral??sidedExercises.has(item.id),minLevel:item.minLevel??specificLevels[item.id]??baseLevel[item.category],goals:[...groupGoals[item.category],...(/팔|어깨|견갑|컵|세면/.test(item.title)?['상지 움직임']:[])],required:[...((['01','02'].includes(item.category))?['bed']:['03','04'].includes(item.category)?['chair']:[]),...(required[item.id]||[]),...(item.required||[])],prone:['02-07','02-08'].includes(item.id)}));
 const byId=new Map(exercises.map(ex=>[ex.id,ex]));
 export const exerciseById=id=>byId.get(id);
 export function newChart(serviceDate=''){
@@ -68,8 +69,8 @@ export function recommend(patient,visit,chart){
 }
 export const defaultDose=Object.freeze({sets:'3',reps:'10',seconds:'3',minutes:''});
 export const sides=[['total','전체 횟수'],['both','좌우 각각'],['left','왼쪽'],['right','오른쪽']];
-export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',method:'',cue:'',memo:''};}
-export function newPerformedItem(exerciseId){return {...newPlanItem(exerciseId),sets:'',reps:'',seconds:'',minutes:'',status:'done',reaction:'',stopReason:'',compensation:'',adjustment:'',feedback:''};}
+export function newPlanItem(exerciseId,reasons=[]){return {id:crypto.randomUUID(),exerciseId,reasons,...defaultDose,side:exerciseById(exerciseId)?.bilateral?'both':'total',assistance:'',method:exerciseById(exerciseId)?.approval?exerciseById(exerciseId).method:'',cue:exerciseById(exerciseId)?.approval?exerciseById(exerciseId).cue:'',memo:''};}
+export function newPerformedItem(exerciseId){return {...newPlanItem(exerciseId),method:'',cue:'',sets:'',reps:'',seconds:'',minutes:'',status:'done',reaction:'',stopReason:'',compensation:'',adjustment:'',feedback:''};}
 export const doseFields=[['sets','세트','세트',100],['reps','반복','회',1000],['seconds','유지 시간','초',3600],['minutes','시간','분',240]];
 export function doseErrors(item){return doseFields.flatMap(([key,label,,max])=>{const value=item[key];if(value===''||value==null)return [];const n=Number(value);return Number.isFinite(n)&&n>0&&n<=max&&(key==='minutes'||key==='seconds'||Number.isInteger(n))?[]:[`${label} 입력을 확인해 주세요.`];});}
 export function doseText(item){return doseFields.filter(([key])=>item[key]!==''&&item[key]!=null).map(([key,label,unit])=>`${key==='reps'?({both:'좌우 각 ',left:'왼쪽 ',right:'오른쪽 '}[item.side]||''):key==='sets'?'':label+' '}${item[key]}${unit}`).join(' · ');}
