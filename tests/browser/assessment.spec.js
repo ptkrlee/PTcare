@@ -3,7 +3,7 @@ import {test,expect} from '@playwright/test';
 import {mockCloud,login,patient} from './mock-cloud.js';
 const total=page=>page.locator('[data-total]');
 const saved=page=>expect(page.locator('[data-save-status]')).toHaveText('서버 저장 완료');
-async function chooseAll(page,index){for(const item of await page.locator('.question-card').all()){const radios=item.locator('input[type=radio]:not([data-field]):not([data-criterion]):enabled');if(await radios.count())await radios.nth(index).check();}}
+async function chooseAll(page,index){await page.locator('.question-card').first().waitFor();for(const item of await page.locator('.question-card').all()){const radios=item.locator('input[type=radio]:not([data-field]):not([data-criterion]):enabled');if(await radios.count())await radios.nth(index).check();}}
 
 test('authentication and patient selection are required before an assessment',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);
@@ -37,7 +37,7 @@ test('skipped versus zero, later completion, result, print contrast and preserve
 test('new patient and new visit cannot inherit another patient or previous visit responses',async({page,context})=>{
  const cloud=mockCloud();cloud.access.get('11111111-1111-4111-8111-111111111111').patient_limit=2;await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-0').check();
  await page.getByRole('link',{name:'회차 목록',exact:true}).click();await page.locator('#new-visit').click();await page.locator('#visit-form button[type=submit],#visit-form button:not([type])').last().click();
- await page.locator('.visit-card').first().locator('.evaluation-card[href$="/bbs"]').first().click();await expect(total(page)).toHaveText('0');
+ await expect(page.locator('.visit-card')).toHaveCount(1);await page.locator('[data-patient-area=assessments]').click();await page.locator('[data-tab=bbs]').click();await expect(total(page)).toHaveText('0');
  await page.locator('.breadcrumbs a').first().click();await patient(page,'김영희');await expect(total(page)).toHaveText('0');await expect(page.locator('.assessment-person')).toContainText('김영희');
  expect(cloud.rows.size<=2).toBe(true);
 });
