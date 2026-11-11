@@ -1,4 +1,5 @@
 export const icons={
+trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/>',
 records:'<rect x="4" y="3" width="14" height="18" rx="2"/><path d="M8 7h6M8 11h4M8 15h2"/><circle cx="17" cy="16" r="5"/><path d="M17 13v3l2 1"/>',
 brain:'<path d="M12 4a4 4 0 0 0-7-1 4 4 0 0 0-2 7 4 4 0 0 0 1 7 4 4 0 0 0 8 3V4Zm0 0a4 4 0 0 1 7-1 4 4 0 0 1 2 7 4 4 0 0 1-1 7 4 4 0 0 1-8 3M6 8l2 2m10-2-2 2M6 16l2-2m10 2-2-2"/>',
 hand:'<path d="M7 12V6a2 2 0 0 1 4 0v5-7a2 2 0 0 1 4 0v7-5a2 2 0 0 1 4 0v7l2-2 1 1-3 7a5 5 0 0 1-5 3h-2a5 5 0 0 1-4-2l-5-6a2 2 0 0 1 3-2l1 1Z"/>',

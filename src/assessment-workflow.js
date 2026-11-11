@@ -1,3 +1,4 @@
+import {assessmentClosed} from './assessment-closure.js';
 import {basicComplete} from './basic-assessment.js';
 import {clinicalComplete,selectedClinicalRows} from './musculoskeletal.js';
 import {measurementValueValid} from './extra-assessments.js';
@@ -28,8 +29,9 @@ export function workflowProgress(a,f,s){
  if((a.fields||[]).some(spec=>spec.type==='number'&&!(a.basic&&spec.id==='basic-pain-night'&&!(fields['basic-pain-patterns']||[]).includes('야간 통증'))&&!(a.clinicalKey==='rom'&&spec.id.endsWith('-degrees')&&fields[spec.id.slice(0,-8)]!=='Limited')&&fields[spec.id]!==undefined&&fields[spec.id]!==''&&fields[spec.id]!=='skipped'&&!valid(spec.id)))complete=false;
  const clinicalIds=a.musculoskeletal?selectedClinicalRows(a,f).flatMap(row=>row.sides.map(side=>row.id+'-'+side)):null;
  const measured=clinicalIds?clinicalIds.filter(valid).length:(a.fields||[]).filter(x=>valid(x.id)).length;
+ const closed=assessmentClosed(f);
  const date=complete?(f.completedAt||f.updatedAt||''):'';
- return {...s,complete,measured,requiredCount:clinicalIds?.length,completedAt:date};
+ return {...s,complete,closed,closedAt:closed?f.closure.at:null,measured,requiredCount:clinicalIds?.length,completedAt:date};
 }
 export function stampCompletion(form,complete,now=new Date().toISOString()){
  if(complete){form.completedAt||=now;}else delete form.completedAt;

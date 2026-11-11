@@ -1,3 +1,4 @@
+import {assessmentClosed} from './assessment-closure.js';
 import {assessmentOrder,getAssessment} from './data.js';
 import {formFor} from './records.js';
 // Read persisted responses, never synthesize history from defaults, dates or a visited page.
@@ -8,6 +9,7 @@ export function hasAssessmentRecord(visit,key){
  if(!raw&&!entered(legacy))return false;
  const a=getAssessment(key,raw?.mobility);if(!a)return false;
  const f=formFor(visit,key);
+ if(assessmentClosed(f))return true;
  if(a.items.some(item=>typeof f.answers?.[item.id]==='number'&&Number.isFinite(f.answers[item.id])))return true;
  if(entered(f.note)||entered(f.comment))return true;
  if(Object.values(f.drawings||{}).some(strokes=>Array.isArray(strokes)&&strokes.some(stroke=>Array.isArray(stroke)&&stroke.length)))return true;
