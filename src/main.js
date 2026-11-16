@@ -63,8 +63,8 @@ function savingBar(){if(store?.temporary)return '<div class="save-bar temporary-
 function render(){
  route=parseRoute();
  if(!session){renderAuth();return;}
- if(!store){root.innerHTML=header()+'<main class="workspace"><p class="loading">대상자 기록을 불러오고 있습니다…</p></main>';return;}
  if(passwordRecovery){renderPassword();return;}
+ if(!store){root.innerHTML=header()+'<main class="workspace"><p class="loading">대상자 기록을 불러오고 있습니다…</p></main>';bindHeader();return;}
  if(access&&!!store.temporary===canStoreRecords(access)){selectStore();if(route.patient){routeTo('/patients');return;}}
  if(route.page==='account'){const user=session.user.id;renderAccount({root,header,footer,bindHeader,getAccess:()=>access||{},active:()=>session?.user.id===user&&parseRoute().page==='account',refresh:async()=>{await refreshAccess();selectStore();render();}});return;}
  if(route.page==='admin'){if(!access?.is_admin){renderMissing('관리자만 접근할 수 있습니다.');return;}const account=session.user.id;renderAdmin({root,header,footer,bindHeader,active:()=>session?.user.id===account&&parseRoute().page==='admin'});return;}
@@ -97,7 +97,7 @@ function renderAuth(){
   const email=document.querySelector('#auth-email').value.trim(),password=document.querySelector('#auth-password').value;
   try{const {error,data}=authMode==='signup'?await supabase.auth.signUp({email,password,options:{emailRedirectTo:location.origin,data:{member_type:document.querySelector('#signup-member-type')?.value||'general'}}}):await supabase.auth.signInWithPassword({email,password});
    if(error)throw error;if(authMode==='signup'&&!data.session){authMessage='가입 확인 메일을 보냈습니다. 메일에서 확인 후 로그인하세요.';authMode='login';renderAuth();}
-  }catch{authMessage=authMode==='signup'?'가입하지 못했습니다. 이메일·비밀번호 조건 또는 가입 가능 여부를 확인해 주세요.':'로그인하지 못했습니다. 이메일·비밀번호와 이메일 인증 여부를 확인해 주세요.';document.querySelector('.auth-message').textContent=authMessage;button.disabled=false;}
+  }catch(error){authMessage=error.code==='email_not_confirmed'?'이메일 인증이 필요합니다. 가입 확인 메일의 링크를 누른 뒤 로그인하세요.':authMode==='signup'?'가입하지 못했습니다. 이메일·비밀번호 조건 또는 가입 가능 여부를 확인해 주세요.':'로그인하지 못했습니다. 이메일·비밀번호와 이메일 인증 여부를 확인해 주세요.';document.querySelector('.auth-message').textContent=authMessage;button.disabled=false;}
  };
  document.querySelector('#reset-password').onclick=async()=>{const email=document.querySelector('#auth-email');if(!email.reportValidity())return;const {error}=await supabase.auth.resetPasswordForEmail(email.value.trim(),{redirectTo:location.origin});document.querySelector('.auth-message').textContent=error?'메일을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.':'가입된 계정이면 비밀번호 재설정 메일이 발송됩니다.';};
 }
@@ -276,7 +276,7 @@ function selectStore(){
 async function activate(next){
  if(store&&next&&store.owner===next.user.id){session=next;if(passwordRecovery)render();return;}
  const generation=++userGeneration;session=next;access=null;accessError='';store?.stop();store=null;
- if(!next){render();return;}
+ if(!next){passwordRecovery=false;render();return;}
  try{access=JSON.parse(sessionStorage.getItem('ptcare-access:'+next.user.id));}catch{}
  render();await refreshAccess();if(generation!==userGeneration)return;selectStore();
  if(new URLSearchParams(location.search).has('app')&&access?.is_admin&&!location.hash)location.hash='/admin';
