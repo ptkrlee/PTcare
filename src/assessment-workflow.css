@@ -15,8 +15,28 @@
  .compact-result .result-comment{margin:6px 0;padding:0;border:0;break-inside:auto}.compact-result .result-comment p{font-size:8pt;line-height:1.35;margin:0;white-space:pre-wrap}.compact-result .result-footer{margin-top:6px;padding-top:4px;font-size:7pt;line-height:1.3}.compact-result .result-footer>span{font-size:7pt}.compact-result .result-footnote{font-size:8pt;margin:4px 0}.compact-result figure{break-inside:avoid}
 }
 
-.spinal-survey:has(.field-options) .measurement-fields{grid-template-columns:1fr}
 .spinal-survey .memory-checks{display:grid;gap:10px;min-width:0}
 .spinal-survey .memory-checks label{display:flex;align-items:flex-start;gap:8px}
 .spinal-survey .memory-checks input{flex:none}
 .spinal-survey [id^="sca-ndi-"] .direct-options{display:grid;grid-template-columns:1fr}
+
+.spinal-cover>dl{display:flex;flex-wrap:wrap;gap:12px 24px;margin:14px 0}
+.spinal-cover>dl dd{margin:4px 0 0}
+.spinal-cover>.measurement-field{max-width:180px;margin-left:auto}
+.spinal-pain-map{position:relative;max-width:505px;margin:12px auto}
+.spinal-pain-map img{display:block;width:100%;height:auto}
+.spinal-pain-slot{position:absolute;left:var(--left);top:var(--top);transform:translate(-50%,-50%);width:11%;min-width:29px}
+.spinal-pain-slot input{width:100%;min-height:28px;padding:2px 1px;text-align:center;font-size:14px;appearance:textfield}
+.spinal-pain-slot input::-webkit-inner-spin-button,.spinal-pain-slot input::-webkit-outer-spin-button{appearance:none;margin:0}
+.spinal-pain-slot label,.spinal-table .measurement-field>label,.spinal-table legend{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.spinal-ndi-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.spinal-ndi-columns fieldset{margin:0 0 18px}
+.spinal-table-scroll{overflow-x:auto;margin:14px 0}
+.spinal-table{min-width:480px}
+.spinal-table caption{padding:8px;text-align:left;font-weight:700}
+.spinal-table th,.spinal-table td{text-align:center}
+.spinal-table input[type=number]{width:100%;min-width:58px}
+.spinal-table .direct-options{display:grid;gap:4px;text-align:left}
+.spinal-table .direct-choice{padding:4px;font-size:12px}
+.spinal-survey output{font-weight:700}
+@media(max-width:680px){.spinal-ndi-columns{grid-template-columns:1fr}}

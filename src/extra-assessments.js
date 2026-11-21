@@ -1,4 +1,4 @@
-import {spinalSurveySections,spinalSurveyScores} from './spinal-surveys.js';
+import {spinalCoverFields,spinalSurveySections,spinalSurveyScores} from './spinal-surveys.js';
 import {secondsInputMax,expandedSecondsMax} from './time-input.js';
 import {sarcopeniaAssessment,sarcopeniaGuidelines,gripDomain,fiveStandDomain} from './sarcopenia-criteria.js';
 import {chairStandReference,muscleMassReference} from './muscle-evidence.js';
@@ -20,17 +20,20 @@ const spinalAsymmetry={
  unit:'관상면 비대칭 · 전방머리자세',
  items:[],
  fields:[
+  ...spinalCoverFields,
+  ...spinalSurveySections.flatMap(section=>section.fields),
   ...[['cca','경추 (CCA)'],['tca','흉요추 (TCA)']].flatMap(([region,label])=>
-   [1,2,3].map(trial=>number(`sca-${region}-${trial}`,`${label} 중립 ${trial}차`,'°',180))),
+   [1,2,3].flatMap(trial=>[
+    number(`sca-${region}-${trial}`,`${label} 중립 ${trial}차`,'°',180),
+    {id:`sca-${region}-${trial}-direction`,label:`${label} 중립 ${trial}차 기울기 방향`,type:'select',options:['왼쪽','오른쪽','기울기 없음']},
+   ])),
   number('sca-tca-left','흉요추 (TCA) 왼쪽 측굴','°',180),
   number('sca-tca-right','흉요추 (TCA) 오른쪽 측굴','°',180),
   number('sca-fhp-speed','전방머리자세 (FHP) 보행속도','km/h',100),
   ...fhpTimes.map(seconds=>number(`sca-fhp-cv-${seconds}`,`머리척추각 (CV) ${seconds}초`,'°',180)),
-  ...spinalSurveySections.flatMap(section=>section.fields),
  ],
- instruction:'경추와 흉요추의 중립 자세 각도를 각각 3회 입력합니다. 흉요추 좌·우 측굴은 각 1회 기록합니다. 전방머리자세는 보행속도와 15·20·25초의 머리척추각을 기록합니다.',
- note:'원문에서는 경추 중립 측정 사이에 1분간 휴식하고, 선 자세로 돌아온 뒤 다시 엎드려 측정합니다. 전방머리자세 평균은 세 시점의 유효한 값이 모두 있을 때 표시됩니다.',
- source:'전방머리자세와 척추비대칭 평가 설문지 (치료사용) · 2–7쪽',
+ instruction:'치료사용 기록지 순서에 따라 기본 정보, 통증, 장애 설문, 각도 측정을 기록합니다.',
+ source:'전방머리자세와 척추비대칭 평가 설문지 (치료사용) · 1–7쪽',
 };
 const makeMoCA=(key,k2)=>{
  const words=k2?['얼굴','비단','학교','피리','노랑']:['얼굴','비단','교회','진달래','빨강'];
@@ -112,7 +115,7 @@ export function computedMeasurements(key,fields={},context={}){
   const rows=spinalSurveyScores(fields);
   if(angles.every(angle=>angle!==null)){
    const average=angles.reduce((sum,angle)=>sum+angle,0)/angles.length;
-   rows.unshift({label:'머리척추각 (CV) 평균',value:average.toFixed(2)+' °'});
+   rows.unshift({key:'cv',label:'머리척추각 (CV) 평균',value:average.toFixed(2)+' °'});
   }
   return rows;
  }
