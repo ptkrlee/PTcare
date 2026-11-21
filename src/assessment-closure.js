@@ -18,7 +18,7 @@ export function closureReminder(a,f,s){
  let required=[];
  if(a.code==='GRIP')required=['grip-sex','grip-dominant',...['right','left'].flatMap(side=>[1,2,3].map(n=>`grip-${side}-${n}`))];
  if(a.code==='STS'){required=['sts-count','sts-arms','sts-single-right','sts-single-left','sts-five-time'];for(const id of ['sts-arms','sts-single-right','sts-single-left'])if(fields[id]==='미실시')missing.push(label(id)+' · 미실시');}
- if(a.code==='OLS')required=a.fields.map(field=>field.id);
+ if(a.code==='OLS'||a.code==='SCA')required=a.fields.filter(field=>!field.optional).map(field=>field.id);
  if(a.code==='TUG'){required=['tug-distance','tug-pace','tug-assistance','tug-population','tug-original'];for(const [id,protocol] of [['tug-cognitive','tug-cognitive-protocol'],['tug-manual','tug-manual-protocol']])if(fields[id]||fields[protocol])required.push(id,protocol);}
  if(a.code==='BODY')required=a.fields.filter(field=>!['body-calf-protocol','body-calf-caution'].includes(field.id)).map(field=>field.id);
  if(a.code==='ASM'){required=['asm-method'];if(!(valid('asm-index')||(valid('asm-mass')&&valid('asm-height')&&Number(fields['asm-height'])>0)))missing.push('ASM 지수 또는 사지골격근량·키');}

@@ -12,7 +12,7 @@ export function workflowProgress(a,f,s){
   let required=[];
   if(key==='grip')required=['grip-sex','grip-dominant',...['right','left'].flatMap(side=>[1,2,3].map(n=>`grip-${side}-${n}`))];
   if(key==='sts')required=['sts-count','sts-arms','sts-single-right','sts-single-left','sts-five-time'];
-  if(key==='one-leg')required=a.fields.map(x=>x.id);
+  if(key==='one-leg'||a.code==='SCA')required=a.fields.filter(field=>!field.optional).map(field=>field.id);
   if(key==='tug')required=['tug-distance','tug-pace','tug-assistance','tug-population','tug-original'];
   if(key==='circumference')required=a.fields.filter(x=>!['body-calf-protocol','body-calf-caution'].includes(x.id)).map(x=>x.id);
   if(key==='sarcopenia')required=['asm-method'];

@@ -1,3 +1,4 @@
+import {spinalSurveySections,spinalSurveyScores} from './spinal-surveys.js';
 import {secondsInputMax,expandedSecondsMax} from './time-input.js';
 import {sarcopeniaAssessment,sarcopeniaGuidelines,gripDomain,fiveStandDomain} from './sarcopenia-criteria.js';
 import {chairStandReference,muscleMassReference} from './muscle-evidence.js';
@@ -9,6 +10,28 @@ const score=(id,title,max,note)=>({id,title,note,options:Array.from({length:max+
 const number=(id,label,unit='초',max=3600)=>({id,label,type:'number',unit,min:0,max:unit==='초'?secondsInputMax(id,expandedSecondsMax(max)):max,step:0.01});
 const text=(id,label)=>({id,label,type:'text'});
 const status=(id,label)=>({id,label,type:'select',options:['가능','불가능','미실시']});
+const fhpTimes=[15,20,25];
+const spinalAsymmetry={
+ code:'SCA',
+ title:'척추비대칭평가',
+ short:'척추비대칭평가',
+ english:'Spinal Coronal Asymmetry · Forward Head Posture',
+ max:null,
+ unit:'관상면 비대칭 · 전방머리자세',
+ items:[],
+ fields:[
+  ...[['cca','경추 (CCA)'],['tca','흉요추 (TCA)']].flatMap(([region,label])=>
+   [1,2,3].map(trial=>number(`sca-${region}-${trial}`,`${label} 중립 ${trial}차`,'°',180))),
+  number('sca-tca-left','흉요추 (TCA) 왼쪽 측굴','°',180),
+  number('sca-tca-right','흉요추 (TCA) 오른쪽 측굴','°',180),
+  number('sca-fhp-speed','전방머리자세 (FHP) 보행속도','km/h',100),
+  ...fhpTimes.map(seconds=>number(`sca-fhp-cv-${seconds}`,`머리척추각 (CV) ${seconds}초`,'°',180)),
+  ...spinalSurveySections.flatMap(section=>section.fields),
+ ],
+ instruction:'경추와 흉요추의 중립 자세 각도를 각각 3회 입력합니다. 흉요추 좌·우 측굴은 각 1회 기록합니다. 전방머리자세는 보행속도와 15·20·25초의 머리척추각을 기록합니다.',
+ note:'원문에서는 경추 중립 측정 사이에 1분간 휴식하고, 선 자세로 돌아온 뒤 다시 엎드려 측정합니다. 전방머리자세 평균은 세 시점의 유효한 값이 모두 있을 때 표시됩니다.',
+ source:'전방머리자세와 척추비대칭 평가 설문지 (치료사용) · 2–7쪽',
+};
 const makeMoCA=(key,k2)=>{
  const words=k2?['얼굴','비단','학교','피리','노랑']:['얼굴','비단','교회','진달래','빨강'];
  const recallCues=k2?[
@@ -57,6 +80,7 @@ const makeMoCA=(key,k2)=>{
 export const extraAssessments={
  basic:basicAssessment,sgds:sgdsAssessment,
  ...musculoskeletalAssessments,
+ 'spinal-asymmetry':spinalAsymmetry,
  fac:{code:'FAC',title:'기능적 보행 분류',english:'Functional Ambulation Categories',short:'FAC · 보행 분류',max:5,unit:'보행 도움 수준 · 0–5등급',fields:[],items:[{id:'fac-category',title:'실제 보행에 필요한 사람의 도움 수준',options:[
  {score:0,label:'0 · 보행 불가 또는 2명 이상의 도움이 필요함'},
  {score:1,label:'1 · 체중 지지와 균형을 위해 1명의 지속적이고 확실한 신체적 도움이 필요함'},
@@ -83,6 +107,15 @@ export function measurementValueValid(field,value){
 }
 export function computedMeasurements(key,fields={},context={}){
  const numeric=id=>{const field=extraAssessments[key]?.fields.find(f=>f.id===id);return field&&measurementValueValid(field,fields[id])?Number(fields[id]):null;};
+ if(key==='spinal-asymmetry'){
+  const angles=fhpTimes.map(seconds=>numeric(`sca-fhp-cv-${seconds}`));
+  const rows=spinalSurveyScores(fields);
+  if(angles.every(angle=>angle!==null)){
+   const average=angles.reduce((sum,angle)=>sum+angle,0)/angles.length;
+   rows.unshift({label:'머리척추각 (CV) 평균',value:average.toFixed(2)+' °'});
+  }
+  return rows;
+ }
  if(key==='sppb'){const scores=scoreSPPB(fields),rows=Object.entries(scores).map(([id,result])=>({label:extraAssessments.sppb.items.find(item=>item.id===id).title,value:(result.score===null?'점수 미확정':result.score+' / 4점')+' · '+result.reason}));if(Object.values(scores).every(x=>Number.isInteger(x.score))){const total=Object.values(scores).reduce((sum,x)=>sum+x.score,0);rows.push({label:'임재영 2025 · 신체기능 참고',value:`${total}/12점 · AWGS 2019/KWGS ≤9점 ${total<=9?'해당':'미해당'} · EWGSOP2 <9점 ${total<9?'해당':'미해당'}. 총점 배점은 변경하지 않으며 근감소증 단독 진단이 아닙니다.`});}return rows;}
  if(key==='tug')return interpretTUG(fields,context);
  if(key==='sts'){const count=numeric('sts-minute-count');return [...chairStandReference(fields,context),...(numeric('sts-five-time')!==null?[{label:'AWGS 2019/KWGS · 5회 STS 신체기능 참고',value:fiveStandDomain(fields,false).text},{label:'EWGSOP2 · 5회 STS 근력 대체 참고',value:fiveStandDomain(fields,true).text}]:[]),...(count===null?[]:[{label:'폐고혈압 · 1분 STS 연구 참고',value:fields['sts-minute-population']==='폐고혈압 진단 환자'&&fields['sts-minute-protocol']==='상지 도움 없이 시행'?`${count}회 · 14.5회 연구 절단값 ${count<14.5?'미만':'이상'}. PH 환자 114명, ERS 2024 학회 초록; 6MWT 165m 미만 식별 참고이며 일반 낙상·근감소증 판정에 사용하지 않습니다.`:'1분 검사 결과를 기록했습니다. 폐고혈압 연구 집단·시행 조건이 확인되지 않아 연구 절단값을 적용하지 않습니다.'}])];}
