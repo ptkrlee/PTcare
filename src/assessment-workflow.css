@@ -45,3 +45,12 @@
 .spinal-table .direct-choice{padding:4px;font-size:12px}
 .spinal-survey output{font-weight:700}
 @media(max-width:680px){.spinal-ndi-columns{grid-template-columns:1fr}}
+
+.spinal-photo{display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin-top:4px}
+.spinal-photo-control,.spinal-photo button{position:relative;display:inline-flex;align-items:center;gap:3px;min-height:24px;padding:1px 4px;border:1px solid var(--line);border-radius:4px;background:white;color:var(--navy);font-size:11px;line-height:1.2;cursor:pointer}
+.spinal-photo-control:focus-within{outline:2px solid var(--navy)}
+.spinal-photo-control:has(:disabled){opacity:.6;cursor:wait}
+.spinal-photo button img{width:19px;height:19px;object-fit:cover}
+.spinal-photo-status:not(.spinal-photo-error){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.spinal-photo-error{width:100%;font-size:11px;text-align:left}
+.spinal-photo-preview{display:block;max-width:100%;max-height:65vh;margin:8px auto;object-fit:contain}

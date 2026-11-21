@@ -8,7 +8,7 @@ test('administrator downloads a workbook with structured spinal results across t
  for(const [index,owner_id] of therapistIds.entries()){
   const id=crypto.randomUUID();
   const visit=(sequence,fields)=>({id:crypto.randomUUID(),sequence,date:'2026-10-23',forms:{
-   'spinal-asymmetry':{fields,answers:{},note:'비공개 평가 메모'},
+   'spinal-asymmetry':{fields,answers:{},note:'비공개 평가 메모',measurementPhotos:{'sca-cca-1':{data:'data:image/jpeg;base64,PRIVATEPHOTO'}}},
   }});
   const visits=[visit(1,{
    'sca-cca-1':String(index*17),'sca-cca-1-direction':'오른쪽','sca-cover-number':'PRIVATE-1234',
@@ -41,5 +41,5 @@ test('administrator downloads a workbook with structured spinal results across t
  expect(result).toContain('<v>17</v>');
  expect(result).toMatch(/<c r="[^"]+"(?: t="n")?><v>0<\/v><\/c>/);
  expect(strings).toContain('RMDQ 총점');
- expect(strings).not.toMatch(/비공개|PRIVATE-1234|1963-02-04|2026-10-23|@example\.test/);
+ expect(strings).not.toMatch(/비공개|PRIVATE-1234|PRIVATEPHOTO|1963-02-04|2026-10-23|@example\.test/);
 });

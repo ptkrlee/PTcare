@@ -1,11 +1,11 @@
 export const spinalCoverFields=[
- {id:'sca-cover-number',label:'No.',type:'text'},
+ {id:'sca-cover-number',label:'번호',type:'text'},
  {id:'sca-cover-examiner',label:'검사자',type:'text'},
  {id:'sca-cover-height',label:'키',type:'number',unit:'cm',min:0,max:300,step:0.01},
  {id:'sca-cover-weight',label:'몸무게',type:'number',unit:'kg',min:0,max:500,step:0.01},
  {id:'sca-cover-condition',label:'기저질환 여부 및 상세',type:'text'},
- {id:'sca-cover-cervical-disc',label:'목디스크 질환',type:'text'},
- {id:'sca-cover-lumbar-disc',label:'허리디스크 질환',type:'text'},
+ {id:'sca-cover-cervical-disc',label:'목뼈 사이원반 질환',type:'text'},
+ {id:'sca-cover-lumbar-disc',label:'허리뼈 사이원반 질환',type:'text'},
  {id:'sca-cover-history',label:'기타 신체 질환 병력 (수술 유무 포함)',type:'text'},
  {id:'sca-cover-hand',label:'주로 사용하는 손',type:'select',options:['좌','우','양측']},
 ].map(field=>({...field,optional:true}));
@@ -62,13 +62,13 @@ const backStatements=[
  '요통 때문에 대부분의 시간을 침대에 누워 있다.',
 ];
 const backOptions=backStatements.map((statement,index)=>(index+1)+'. '+statement);
-const backItems={id:'sca-rmdq-items',label:'요통으로 인한 장애 문항',type:'checks',options:backOptions,optional:true};
-const backConfirmation={id:'sca-rmdq-confirmed',label:'요통 장애 설문 확인',type:'select',options:['모든 문항을 확인함']};
+const backItems={id:'sca-rmdq-items',label:'허리통증으로 인한 장애 문항',type:'checks',options:backOptions,optional:true};
+const backConfirmation={id:'sca-rmdq-confirmed',label:'허리통증 장애 설문 확인',type:'select',options:['모든 문항을 확인함']};
 
 export const spinalSurveySections=[
  {key:'pain',title:'부위별 통증 (0–10점)',help:'평소 평균적인 통증이나 불편감을 기록합니다. 통증이 없는 부위는 비워둘 수 있습니다.',fields:painFields},
- {key:'ndi',title:'경부장애척도 (NDI)',help:'각 문항에서 현재 상태를 가장 잘 설명하는 응답을 하나씩 선택합니다.',fields:neckFields},
- {key:'rmdq',title:'요통 장애 설문 (RMDQ)',help:'오늘 상태에 해당하는 문장만 체크합니다. 해당 문장이 없어도 모든 문항을 확인했다면 아래 확인 항목을 선택하세요.',fields:[backItems,backConfirmation]},
+ {key:'ndi',title:'목 장애 지수 (NDI)',help:'각 문항에서 현재 상태를 가장 잘 설명하는 응답을 하나씩 선택합니다.',fields:neckFields},
+ {key:'rmdq',title:'롤랜드-모리스 허리통증 장애 설문 (RMDQ)',help:'오늘 상태에 해당하는 문장만 체크합니다. 해당 문장이 없어도 모든 문항을 확인했다면 아래 확인 항목을 선택하세요.',fields:[backItems,backConfirmation]},
 ];
 
 export function spinalSurveyScores(fields){
@@ -76,12 +76,12 @@ export function spinalSurveyScores(fields){
  const rows=[];
  if(neckScores.every(score=>score>=0)){
   const total=neckScores.reduce((sum,score)=>sum+score,0);
-  rows.push({key:'ndi',numeric:total,label:'경부장애척도 (NDI) 총점',value:total+' / 50점'});
+  rows.push({key:'ndi',numeric:total,label:'목 장애 지수 (NDI) 총점',value:total+' / 50점'});
  }
  if(fields[backConfirmation.id]===backConfirmation.options[0]){
   const checked=fields[backItems.id];
   const total=Array.isArray(checked)?backOptions.filter(option=>checked.includes(option)).length:0;
-  rows.push({key:'rmdq',numeric:total,label:'요통 장애 설문 (RMDQ) 총점',value:total+' / 24점'});
+  rows.push({key:'rmdq',numeric:total,label:'허리통증 장애 설문 (RMDQ) 총점',value:total+' / 24점'});
  }
  return rows;
 }

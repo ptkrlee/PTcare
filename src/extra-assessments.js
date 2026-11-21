@@ -15,21 +15,21 @@ const spinalAsymmetry={
  code:'SCA',
  title:'척추비대칭평가',
  short:'척추비대칭평가',
- english:'Spinal Coronal Asymmetry · Forward Head Posture',
+ english:'척추 이마면 비대칭 · 앞쪽머리자세',
  max:null,
- unit:'관상면 비대칭 · 전방머리자세',
+ unit:'각도 · 걷기 속도',
  items:[],
  fields:[
   ...spinalCoverFields,
   ...spinalSurveySections.flatMap(section=>section.fields),
-  ...[['cca','경추 (CCA)'],['tca','흉요추 (TCA)']].flatMap(([region,label])=>
+  ...[['cca','목뼈 (CCA)'],['tca','등허리뼈 (TCA)']].flatMap(([region,label])=>
    [1,2,3].flatMap(trial=>[
     number(`sca-${region}-${trial}`,`${label} 중립 ${trial}차`,'°',180),
     {id:`sca-${region}-${trial}-direction`,label:`${label} 중립 ${trial}차 기울기 방향`,type:'select',options:['왼쪽','오른쪽','기울기 없음']},
    ])),
-  number('sca-tca-left','흉요추 (TCA) 왼쪽 측굴','°',180),
-  number('sca-tca-right','흉요추 (TCA) 오른쪽 측굴','°',180),
-  number('sca-fhp-speed','전방머리자세 (FHP) 보행속도','km/h',100),
+  number('sca-tca-left','등허리뼈 (TCA) 왼쪽 옆굽힘','°',180),
+  number('sca-tca-right','등허리뼈 (TCA) 오른쪽 옆굽힘','°',180),
+  number('sca-fhp-speed','앞쪽머리자세 (FHP) 걷기 속도','km/h',100),
   ...fhpTimes.map(seconds=>number(`sca-fhp-cv-${seconds}`,`머리척추각 (CV) ${seconds}초`,'°',180)),
  ],
  instruction:'치료사용 기록지 순서에 따라 기본 정보, 통증, 장애 설문, 각도 측정을 기록합니다.',
