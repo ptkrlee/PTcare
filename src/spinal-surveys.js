@@ -75,12 +75,12 @@ export function spinalSurveyScores(fields){
  const rows=[];
  if(neckScores.every(score=>score>=0)){
   const total=neckScores.reduce((sum,score)=>sum+score,0);
-  rows.push({key:'ndi',label:'경부장애척도 (NDI) 총점',value:total+' / 50점'});
+  rows.push({key:'ndi',numeric:total,label:'경부장애척도 (NDI) 총점',value:total+' / 50점'});
  }
  if(fields[backConfirmation.id]===backConfirmation.options[0]){
   const checked=fields[backItems.id];
   const total=Array.isArray(checked)?backOptions.filter(option=>checked.includes(option)).length:0;
-  rows.push({key:'rmdq',label:'요통 장애 설문 (RMDQ) 총점',value:total+' / 24점'});
+  rows.push({key:'rmdq',numeric:total,label:'요통 장애 설문 (RMDQ) 총점',value:total+' / 24점'});
  }
  return rows;
 }

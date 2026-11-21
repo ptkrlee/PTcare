@@ -1,3 +1,4 @@
+import {collectSpinalExport,downloadSpinalWorkbook} from './admin-spinal-export.js';
 import {servicePrintContent} from './charting/service-record.js';
 import {chartFor,assessmentBasis} from './charting/engine.js';
 import {criterionState,timedCriterion,bbsTimed} from './timed-criteria.js';
@@ -21,7 +22,7 @@ function assessmentReadout(visit,patient){const keys=new Set(Object.keys(visit.f
  }).join('');}
 // Clinical records are read through dedicated SELECT-only RPCs, never the therapist RecordStore.
 export async function renderAdmin({root,header,footer,bindHeader,active}){
- root.innerHTML=header()+`<main class="workspace"><a href="#/patients">← 내 대상자 목록</a><section class="identity-card" id="admin-inbox"></section><section class="identity-card" id="admin-push-settings"></section><section class="identity-card"><h1>관리자 · 회원 인증 및 이용권 관리</h1><p>승인, 대상자 총 한도, 대상자별 회차 총 한도를 관리합니다. 임상 기록은 읽기 전용입니다.</p><p role="status" id="admin-status">불러오는 중…</p><label>회원 검색<input id="admin-search" placeholder="이메일로 검색"></label><div id="admin-therapists"></div></section><div id="admin-detail"></div>${footer()}</main>`;bindHeader();
+ root.innerHTML=header()+`<main class="workspace"><a href="#/patients">← 내 대상자 목록</a><section class="identity-card" id="admin-inbox"></section><section class="identity-card" id="admin-push-settings"></section><section class="identity-card"><h2>척추비대칭평가 결과 내보내기</h2><p>전체 치료사회원의 저장된 회차별 결과를 Excel로 내려받습니다. 이름, 생년월일, 이메일, 자유기재 내용은 제외합니다.</p><button type="button" class="button secondary" id="export-spinal-results">척추비대칭평가 Excel 다운로드</button><p role="status" id="spinal-export-status"></p></section><section class="identity-card"><h1>관리자 · 회원 인증 및 이용권 관리</h1><p>승인, 대상자 총 한도, 대상자별 회차 총 한도를 관리합니다. 임상 기록은 읽기 전용입니다.</p><p role="status" id="admin-status">불러오는 중…</p><label>회원 검색<input id="admin-search" placeholder="이메일로 검색"></label><div id="admin-therapists"></div></section><div id="admin-detail"></div>${footer()}</main>`;bindHeader();
  const status=document.querySelector('#admin-status'),list=document.querySelector('#admin-therapists'),detail=document.querySelector('#admin-detail');
  const alive=()=>active()&&document.querySelector('#admin-status')===status;
  let therapists=[],selectedUserId=null;
@@ -39,6 +40,28 @@ export async function renderAdmin({root,header,footer,bindHeader,active}){
   }catch{message('기록을 불러오지 못했습니다. 관리자 권한과 서버 연결을 확인하세요.');}
  }
  document.querySelector('#admin-search').oninput=showList;
+ const spinalExport=document.querySelector('#export-spinal-results');
+ const exportStatus=document.querySelector('#spinal-export-status');
+ spinalExport.onclick=async()=>{
+  spinalExport.disabled=true;
+  exportStatus.textContent='척추비대칭평가 결과를 불러오는 중…';
+  try{
+   const rows=await collectSpinalExport(rpc,{active:alive,progress:(current,total)=>{
+    exportStatus.textContent=`치료사 기록 확인 중 (${current}/${total})…`;
+   }});
+   if(!alive())return;
+   if(!rows.length){
+    exportStatus.textContent='다운로드할 척추비대칭평가 결과가 없습니다.';
+    return;
+   }
+   await downloadSpinalWorkbook(rows,alive);
+   if(alive())exportStatus.textContent=`${rows.length}회차 결과를 다운로드했습니다.`;
+  }catch{
+   if(alive())exportStatus.textContent='다운로드하지 못했습니다. 관리자 권한과 서버 연결을 확인하고 다시 시도해 주세요.';
+  }finally{
+   if(alive())spinalExport.disabled=false;
+  }
+ };
  mountAdminPush(document.querySelector('#admin-push-settings'),alive);
  mountAdminInbox(document.querySelector('#admin-inbox'),{active:alive,openMember:async id=>{await reload();await open(therapists.find(t=>t.user_id===id));},changed:async()=>{await reload();if(selectedUserId)await open(therapists.find(t=>t.user_id===selectedUserId));}});
  try{await reload();}catch{message('관리자 정보를 불러오지 못했습니다. 관리자 권한과 데이터베이스 설정을 확인하세요.');}

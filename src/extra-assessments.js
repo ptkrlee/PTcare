@@ -115,7 +115,7 @@ export function computedMeasurements(key,fields={},context={}){
   const rows=spinalSurveyScores(fields);
   if(angles.every(angle=>angle!==null)){
    const average=angles.reduce((sum,angle)=>sum+angle,0)/angles.length;
-   rows.unshift({key:'cv',label:'머리척추각 (CV) 평균',value:average.toFixed(2)+' °'});
+   rows.unshift({key:'cv',numeric:Number(average.toFixed(2)),label:'머리척추각 (CV) 평균',value:average.toFixed(2)+' °'});
   }
   return rows;
  }
