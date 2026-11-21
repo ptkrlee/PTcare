@@ -1,5 +1,6 @@
 export const spinalCoverFields=[
  {id:'sca-cover-number',label:'No.',type:'text'},
+ {id:'sca-cover-examiner',label:'검사자',type:'text'},
  {id:'sca-cover-height',label:'키',type:'number',unit:'cm',min:0,max:300,step:0.01},
  {id:'sca-cover-weight',label:'몸무게',type:'number',unit:'kg',min:0,max:500,step:0.01},
  {id:'sca-cover-condition',label:'기저질환 여부 및 상세',type:'text'},

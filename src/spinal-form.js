@@ -21,9 +21,9 @@ export function renderSpinalForm({assessment,form,patient,visit,renderField}){
     <dl><div><dt>작성일</dt><dd>${e(visit.date)}</dd></div>
     <div><dt>생년월일</dt><dd>${e(patient.identity.birth?.slice(0,7))}</dd></div>
     <div><dt>성별</dt><dd>${e(patient.identity.sex||'미입력')}</dd></div></dl>
-    ${render(spinalCoverFields[0])}
+    <div class="spinal-cover-identifiers">${spinalCoverFields.slice(0,2).map(render).join('')}</div>
    </div>
-   <div class="measurement-fields">${spinalCoverFields.slice(1).map(render).join('')}</div>
+   <div class="measurement-fields">${spinalCoverFields.slice(2).map(render).join('')}</div>
   </div>`);
  const [pain,neck,back]=spinalSurveySections;
  const painMap=card(pain.title,`<p>${e(pain.help)}</p>

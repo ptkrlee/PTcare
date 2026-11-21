@@ -8,6 +8,7 @@ test('spinal asymmetry records angles and shows the CV average after all three r
  const tab=page.locator('[data-tab=spinal-asymmetry]');
  await tab.click();
  await expect(page.getByRole('heading',{name:'척추비대칭평가'})).toBeVisible();
+ await page.locator('.spinal-cover-identifiers').getByLabel('검사자').fill('테스트 검사자');
 
  await page.locator('#sca-fhp-cv-15').fill('42.25');
  await page.locator('#sca-fhp-cv-20').fill('43');
@@ -45,6 +46,7 @@ test('spinal asymmetry records angles and shows the CV average after all three r
  await expect(tab.locator('.completion-pill')).toHaveText('✓ 완료');
  await expect(page.locator('[data-save-status]')).toHaveText('서버 저장 완료');
  await page.reload();
+ await expect(page.locator('#sca-cover-examiner')).toHaveValue('테스트 검사자');
  await expect(page.locator('#sca-cca-1')).toHaveValue('0');
  await expect(page.locator('#sca-cca-1-direction-option-2')).toBeChecked();
  await expect(page.locator('#sca-tca-2-direction-option-1')).toBeChecked();
@@ -52,6 +54,7 @@ test('spinal asymmetry records angles and shows the CV average after all three r
  await expect(page.locator('#sca-rmdq-items-23')).toBeChecked();
  await page.locator('.score-sidebar .result-button').click();
  const result=page.locator('.result-measurements');
+ await expect(result).toContainText('테스트 검사자');
  await expect(result.getByText('흉요추 (TCA) 중립 2차 기울기 방향').locator('..')).toContainText('오른쪽');
  await expect(result).toContainText('43.25 °');
  await expect(result).toContainText('20 / 50점');
