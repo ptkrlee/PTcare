@@ -35,6 +35,8 @@
 .spinal-table{min-width:480px}
 .spinal-table caption{padding:8px;text-align:left;font-weight:700}
 .spinal-table th,.spinal-table td{text-align:center}
+.spinal-table thead th:first-child{width:80px}
+.spinal-table thead th:last-child{width:auto}
 .spinal-table input[type=number]{width:100%;min-width:58px}
 .spinal-table .direct-options{display:grid;gap:4px;text-align:left}
 .spinal-table .direct-choice{padding:4px;font-size:12px}
