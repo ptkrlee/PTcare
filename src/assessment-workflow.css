@@ -20,9 +20,12 @@
 .spinal-survey .memory-checks input{flex:none}
 .spinal-survey [id^="sca-ndi-"] .direct-options{display:grid;grid-template-columns:1fr}
 
-.spinal-cover>dl{display:flex;flex-wrap:wrap;gap:12px 24px;margin:14px 0}
-.spinal-cover>dl dd{margin:4px 0 0}
-.spinal-cover>.measurement-field{max-width:180px;margin-left:auto}
+.spinal-cover-header{display:flex;align-items:end;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;margin-bottom:10px}
+.spinal-cover-header dl{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0}
+.spinal-cover-header dd{margin:2px 0 0}
+.spinal-cover-header .measurement-field{flex:0 1 100px}
+.spinal-cover .measurement-fields{gap:9px 14px}
+.spinal-cover .measurement-field>input{margin-top:4px}
 .spinal-pain-map{position:relative;max-width:505px;margin:12px auto}
 .spinal-pain-map img{display:block;width:100%;height:auto}
 .spinal-pain-slot{position:absolute;left:var(--left);top:var(--top);transform:translate(-50%,-50%);width:11%;min-width:29px}
