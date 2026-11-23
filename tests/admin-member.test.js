@@ -6,14 +6,13 @@ const actor='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const target='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const email='test@example.test';
 
-function setup({admin=true,targetAdmin=false,confirmed=true,installed=true}={}){
- const mutations=[];
+function setup({admin=true,targetAdmin=false,confirmed=true,installed=true,authError,serviceError,env={}}={}){
+ const mutations=[],connections=[];
  const user={id:target,email,email_confirmed_at:confirmed?'2026-10-01':null};
  const client={
-  from:()=>({select:()=>({eq:(_,id)=>({maybeSingle:async()=>({data:(id===actor?admin:targetAdmin)?{user_id:id}:null})})})}),
+  from:()=>({select:()=>({eq:(_,id)=>({maybeSingle:async()=>serviceError?{error:serviceError,status:serviceError.status}:{data:(id===actor?admin:targetAdmin)?{user_id:id}:null}})})}),
   rpc:async()=>installed?{}:{error:{code:'PGRST202'}},
   auth:{
-   getUser:async(token)=>({data:{user:token==='test-admin-token'?{id:actor}:null}}),
    admin:{
     getUserById:async()=>({data:{user}}),
     deleteUser:async(...args)=>{mutations.push(['delete',...args]);return {};},
@@ -22,8 +21,21 @@ function setup({admin=true,targetAdmin=false,confirmed=true,installed=true}={}){
    resend:async(...args)=>{mutations.push(['resend',...args]);return {};},
   },
  };
- const handler=createAdminMemberHandler(()=>client,{SUPABASE_URL:'https://example.test',SUPABASE_SERVICE_ROLE_KEY:'test-server-key'});
- return {mutations,request:async(action,body={})=>{
+ const userClient={auth:{getUser:async(token)=>({
+  data:{user:!authError&&token==='test-admin-token'?{id:actor}:null},
+  error:authError,
+ })}};
+ const handler=createAdminMemberHandler((url,key)=>{
+  connections.push([url,key]);
+  return key==='test-server-key'?client:userClient;
+ },{
+  SUPABASE_URL:'https://example.test',
+  SUPABASE_SERVICE_ROLE_KEY:'test-server-key',
+  VITE_SUPABASE_URL:'https://example.test/',
+  VITE_SUPABASE_PUBLISHABLE_KEY:'test-public-key',
+  ...env,
+ });
+ return {mutations,connections,request:async(action,body={})=>{
   const result={};
   const res={setHeader:()=>{},status:status=>{result.status=status;return res;},json:json=>{result.json=json;}};
   await handler({method:'POST',headers:{authorization:'Bearer test-admin-token'},body:{userId:target,action,...body}},res);
@@ -58,4 +70,27 @@ test('retirement requires matching confirmation and database guards, and uses so
  const oldSchema=setup({installed:false});
  assert.equal((await oldSchema.request('retire',{confirmEmail:email})).json.code,'schema');
  assert.deepEqual(oldSchema.mutations,[]);
+});
+
+
+test('member endpoint separates expired login from public-key, service-key and project settings failures',async()=>{
+ const expired=setup({authError:{status:403,code:'session_not_found'}});
+ assert.equal((await expired.request('status')).json.code,'login');
+ assert.deepEqual(expired.connections,[['https://example.test','test-public-key']]);
+
+ const publicKey=setup({authError:{status:401,message:'Invalid API key'}});
+ assert.equal((await publicKey.request('status')).json.code,'browser-key');
+
+ const wrongProject=setup({env:{SUPABASE_URL:'https://other.example.test'}});
+ assert.equal((await wrongProject.request('status')).json.code,'project-mismatch');
+ assert.deepEqual(wrongProject.connections,[]);
+
+ const copiedPublicKey=setup({env:{SUPABASE_SERVICE_ROLE_KEY:'sb_publishable_wrong'}});
+ assert.equal((await copiedPublicKey.request('status')).json.code,'server-key');
+ assert.deepEqual(copiedPublicKey.connections,[]);
+
+ const rejectedService=setup({serviceError:{status:401,message:'Invalid API key'}});
+ assert.equal((await rejectedService.request('retire',{confirmEmail:email})).json.code,'server-key');
+ assert.deepEqual(rejectedService.connections,[['https://example.test','test-public-key'],['https://example.test','test-server-key']]);
+ assert.deepEqual(rejectedService.mutations,[]);
 });

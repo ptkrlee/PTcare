@@ -1,7 +1,12 @@
 import {createClient} from '@supabase/supabase-js';
+import {publicProject} from '../src/public-project.js';
 
 const uuid=/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const actions=new Set(['status','reset','confirm-email','retire']);
+const trim=value=>value?.trim()||'';
+const projectUrl=value=>trim(value).replace(/\/+$/,'');
+const invalidApiKey=error=>error?.code==='invalid_api_key'||/invalid api key|no api key found/i.test(error?.message||'');
+const serviceUnauthorized=(error,status)=>invalidApiKey(error)||[401,403].includes(status??error?.status)||error?.code==='42501';
 
 export function createAdminMemberHandler(connect=createClient,env=process.env){
  return async function handler(req,res){
@@ -11,7 +16,13 @@ export function createAdminMemberHandler(connect=createClient,env=process.env){
   if(req.method!=='POST'){res.setHeader('Allow','POST');return fail(405,'method');}
   const bearer=req.headers.authorization?.match(/^Bearer (\S+)$/i)?.[1];
   if(!bearer)return fail(401,'login');
-  if(!env.SUPABASE_URL||!env.SUPABASE_SERVICE_ROLE_KEY)return fail(503,'config');
+  const serverUrl=projectUrl(env.SUPABASE_URL);
+  const serviceKey=trim(env.SUPABASE_SERVICE_ROLE_KEY);
+  const userUrl=projectUrl(env.VITE_SUPABASE_URL||publicProject.url);
+  const userKey=trim(env.VITE_SUPABASE_PUBLISHABLE_KEY||env.VITE_SUPABASE_ANON_KEY||publicProject.publishableKey);
+  if(!serverUrl||!serviceKey)return fail(503,'config');
+  if(serverUrl!==userUrl)return fail(503,'project-mismatch');
+  if(serviceKey===userKey||serviceKey.startsWith('sb_publishable_'))return fail(503,'server-key');
   let body=req.body;
   if(typeof body==='string'){
    if(body.length>4096)return fail(413,'input');
@@ -19,22 +30,31 @@ export function createAdminMemberHandler(connect=createClient,env=process.env){
   }
   if(typeof body?.userId!=='string'||!uuid.test(body.userId)||!actions.has(body.action))return fail(400,'input');
   try{
-   const client=connect(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{
-    auth:{persistSession:false,autoRefreshToken:false},
+   const options={
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
     global:{fetch:(input,init)=>fetch(input,{...init,signal:init?.signal?AbortSignal.any([init.signal,deadline]):deadline})},
-   });
-   const {data:{user:actor},error:authError}=await client.auth.getUser(bearer);
+   };
+   const authClient=connect(userUrl,userKey,options);
+   const {data:actorData,error:authError}=await authClient.auth.getUser(bearer);
+   if(invalidApiKey(authError))return fail(503,'browser-key');
+   if(authError&&![401,403].includes(authError.status)&&!['bad_jwt','session_not_found'].includes(authError.code)){
+    return fail(503,'unavailable');
+   }
+   const actor=actorData?.user;
    if(authError||!actor)return fail(401,'login');
-   const admin=id=>client.from('platform_admins').select('user_id').eq('user_id',id).maybeSingle();
-   const {data:isAdmin,error:adminError}=await admin(actor.id);
-   if(adminError)return fail(503,'unavailable');
-   if(!isAdmin)return fail(403,'forbidden');
    if(body.userId.toLowerCase()===actor.id.toLowerCase())return fail(403,'protected');
-   const {data:targetAdmin,error:targetError}=await admin(body.userId);
-   if(targetError)return fail(503,'unavailable');
+
+   const client=connect(serverUrl,serviceKey,options);
+   const admin=id=>client.from('platform_admins').select('user_id').eq('user_id',id).maybeSingle();
+   const {data:isAdmin,error:adminError,status:adminStatus}=await admin(actor.id);
+   if(adminError)return fail(503,serviceUnauthorized(adminError,adminStatus)?'server-key':'unavailable');
+   if(!isAdmin)return fail(403,'forbidden');
+   const {data:targetAdmin,error:targetError,status:targetStatus}=await admin(body.userId);
+   if(targetError)return fail(503,serviceUnauthorized(targetError,targetStatus)?'server-key':'unavailable');
    if(targetAdmin)return fail(403,'protected');
-   const {data:{user:target},error:lookupError}=await client.auth.admin.getUserById(body.userId);
-   if(lookupError&&lookupError.status!==404)return fail(503,'unavailable');
+   const {data:targetData,error:lookupError}=await client.auth.admin.getUserById(body.userId);
+   if(lookupError&&lookupError.status!==404)return fail(503,serviceUnauthorized(lookupError)?'server-key':'unavailable');
+   const target=targetData?.user;
    if(!target?.email)return fail(404,'missing');
    const state={
     emailConfirmed:!!target.email_confirmed_at,
