@@ -4,6 +4,14 @@ const url=import.meta.env.VITE_SUPABASE_URL||publicProject.url;
 const key=import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||import.meta.env.VITE_SUPABASE_ANON_KEY||publicProject.publishableKey;
 export const configured=!!(url&&key&&url.startsWith('https://')&&!url.includes('YOUR_PROJECT'));
 export const supabase=configured?createClient(url,key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}}):null;
+// Reauthenticate for a password change without replacing the active PTcare session.
+export function passwordChangeClient(signal){
+ return createClient(url,key,{
+  auth:{storageKey:'ptcare-password-change',persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+  global:{fetch:(input,init)=>fetch(input,{...init,signal:init?.signal?AbortSignal.any([init.signal,signal]):signal})},
+ });
+}
+
 export class CloudBackend{
  constructor(client){this.client=client;}
  async list(){const {data,error}=await this.client.from('patient_records').select('*').order('updated_at',{ascending:false});if(error)throw error;return data;}

@@ -6,7 +6,9 @@ async function confirmActual(page,id='01-01'){await page.locator(`[data-perform=
 const field=(page,key)=>page.locator(`[data-chart-field="${key}"]`);
 
 test('patient charting has all examples, separates plan from actual, generates and reviews a printable note',async({page,context})=>{
+ await page.addInitScript(()=>{window.printCalls=0;window.print=()=>{window.printCalls++;};});
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await page.locator('#bbs-0-3').check();await openChart(page);
+ await expect(page.locator('[data-chart-review]')).toHaveText('치료사 검토 미완료');
  await expect(page.locator('#library-count')).toContainText('128개');
  await field(page,'therapist').fill('테스트 치료사');await field(page,'subjective').fill('앉은 자세에서 발목 운동을 희망함.');
  await addPlan(page);await page.locator('#generate-note').click();await expect(page.locator('#chart-validation')).toBeEmpty();await expect(page.locator('#note-draft')).toHaveValue(/좌우 각 10회/);await expect(page.locator('#note-draft')).not.toHaveValue(/실제 수행 운동|미기록/);
@@ -15,8 +17,14 @@ test('patient charting has all examples, separates plan from actual, generates a
  await page.locator('[data-entry-kind=performed][data-entry-field=reps]').fill('7');await field(page,'response').fill('관찰한 반응을 직접 기록함.');
  await field(page,'homework').fill('매일 발목 운동');await field(page,'nextVisitDate').fill('2026-10-29');await field(page,'nextVisitTime').fill('14:30');await page.locator('#generate-note').click();await page.locator('#chart-confirm').click();await expect(page.locator('#note-draft')).toHaveValue(/2026-10-29 14:30/);await expect(page.locator('#note-draft')).toHaveValue(/매일 발목 운동/);await expect(page.locator('#note-draft')).toHaveValue(/7회/);await expect(page.locator('#note-draft')).not.toHaveValue(/12회/);await expect(page.locator('#note-draft')).toHaveValue(/원점수|부분 점수/);
  await page.locator('#review-note').click();await page.locator('#chart-confirm').click();await expect(page.locator('[data-note-state]')).toContainText('검토 완료');
+ await expect(page.locator('[data-chart-review]')).toHaveText('치료사 검토 완료');
+ await page.locator('#print-chart-service').click();
+ await expect(page.locator('.result-title')).toContainText('운동서비스 기록지');
+ await expect(page.locator('.result-title')).toContainText('치료사 검토 완료');
+ await expect.poll(()=>page.evaluate(()=>window.printCalls)).toBe(1);
+ await page.locator('.result-toolbar a').click();
  await page.locator('a[href$="/print-note"]').click();await expect(page.locator('.result-title')).toContainText('치료사 검토 완료');await page.emulateMedia({media:'print'});await expect(page.locator('.progress-note-print')).toHaveCSS('color','rgb(0, 0, 0)');await page.pdf({path:'/tmp/ptcare-progress-note.pdf',format:'A4'});await page.emulateMedia({media:'screen'});
- await page.locator('.result-toolbar a').click();await field(page,'response').fill('추가로 확인한 반응');await expect(page.locator('[data-note-state]')).toContainText('변경됨');await page.locator('#review-note').click();await expect(page.locator('#chart-validation')).toContainText('다시 생성');await expect(page.locator('.chart-history')).toContainText('검토본');
+ await page.locator('.result-toolbar a').click();await field(page,'response').fill('추가로 확인한 반응');await expect(page.locator('[data-note-state]')).toContainText('변경됨');await expect(page.locator('[data-chart-review]')).toHaveText('치료사 재검토 필요');await page.locator('#review-note').click();await expect(page.locator('#chart-validation')).toContainText('다시 생성');await expect(page.locator('.chart-history')).toContainText('검토본');
 });
 test('recommendations are blocked until confirmed and cannot silently replace the selected plan',async({page,context})=>{
  const cloud=mockCloud();await cloud.attach(context);await login(page);await patient(page);await openChart(page);

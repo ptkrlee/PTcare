@@ -44,6 +44,7 @@ import {renderAdmin} from './admin.js';
 import {renderMocaQuestions,bindMocaDrawings,mountMocaDrawing,legacyObservation} from './moca-ui.js';
 
 import './mobile-workspace.css';
+import './workspace-panels.css';
 
 const keys=assessmentOrder;
 const displayName=a=>['BBS','MBI','ROM','MMT','MAS'].includes(a.code)?a.code:a.short;
@@ -70,7 +71,7 @@ function render(){
  if(passwordRecovery){renderPassword();return;}
  if(!store){root.innerHTML=header()+'<main class="workspace"><p class="loading">대상자 기록을 불러오고 있습니다…</p></main>';bindHeader();return;}
  if(access&&!!store.temporary===canStoreRecords(access)){selectStore();if(route.patient){routeTo('/patients');return;}}
- if(route.page==='account'){const user=session.user.id;renderAccount({root,header,footer,bindHeader,getAccess:()=>access||{},active:()=>session?.user.id===user&&parseRoute().page==='account',refresh:async()=>{await refreshAccess();selectStore();render();}});return;}
+ if(route.page==='account'){const user=session.user.id;renderAccount({root,header,footer,bindHeader,user:session.user,getAccess:()=>access||{},active:()=>session?.user.id===user&&parseRoute().page==='account',refresh:async()=>{await refreshAccess();selectStore();render();}});return;}
  if(route.page==='admin'){if(!access?.is_admin){renderMissing('관리자만 접근할 수 있습니다.');return;}const account=session.user.id;renderAdmin({root,header,footer,bindHeader,getAccessToken:()=>session?.access_token,active:()=>session?.user.id===account&&parseRoute().page==='admin'});return;}
  if(!access){renderAccessGate();return;}
  if(store.temporary&&(route.charting||route.plan)){renderMissing('평가 전용 회원은 저장·차팅을 이용할 수 없습니다. 회원정보에서 치료사회원 인증을 요청해 주세요.');return;}
@@ -307,9 +308,13 @@ if(configured){
  supabase.auth.getSession().then(({data,error})=>{if(error){authMessage='로그인 상태를 확인할 수 없습니다. 다시 로그인하세요.';renderAuth();}else if(!session)activate(data.session);});
 }
 
+let requestedChartPrint='';
 function renderChart(){
  const patientId=route.patient,visitId=route.visit,ownStore=store;
- const options={root,header,footer,savingBar,bindCommon,modal,closeModal,visitLimit:access.visit_limit,addVisit:()=>showNewVisit(patientId,{charting:true}),switchVisit:id=>{if(ownStore.read(patientId)?.document.visits.some(v=>v.id===id))routeTo(`/patients/${patientId}/visits/${id}/charting`);},ownerId:session.user.id,chartPath:`/patients/${patientId}/visits/${visitId}/charting`,
+ const printPath=`/patients/${patientId}/visits/${visitId}/charting/print-service`;
+ const autoPrint=requestedChartPrint===printPath&&route.chartPrint==='print-service';
+ requestedChartPrint='';
+ const options={root,header,footer,savingBar,bindCommon,modal,closeModal,autoPrint,printService:()=>{requestedChartPrint=printPath;routeTo(printPath);},visitLimit:access.visit_limit,addVisit:()=>showNewVisit(patientId,{charting:true}),switchVisit:id=>{if(ownStore.read(patientId)?.document.visits.some(v=>v.id===id))routeTo(`/patients/${patientId}/visits/${id}/charting`);},ownerId:session.user.id,chartPath:`/patients/${patientId}/visits/${visitId}/charting`,
   getRecord:()=>{const patient=ownStore.read(patientId).document;return {patient,visit:patient.visits.find(v=>v.id===visitId)};},
   updateChart:mutator=>{if(!ownStore.active)return;ownStore.update(patientId,doc=>{const visit=doc.visits.find(v=>v.id===visitId);const chart=chartFor(visit);chart.reviewed=null;mutator(chart);chart.updatedAt=new Date().toISOString();visit.chart=chart;visit.updatedAt=chart.updatedAt;});}
  };

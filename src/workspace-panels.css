@@ -1,0 +1,73 @@
+@media screen {
+ [data-panel-tone],.assessment-heading,.question-section .measurement-card,.question-section .comment-card {
+  --panel-ink:#17324d;
+  --panel-wash:#edf2f8;
+  --panel-edge:#b5c6d8;
+  background:var(--panel-wash);
+  border-color:var(--panel-edge);
+ }
+ [data-panel-tone="mint"],.question-section .measurement-card {
+  --panel-ink:#305e55;
+  --panel-wash:#ecf5f1;
+  --panel-edge:#afccc1;
+ }
+ [data-panel-tone="silver"] {--panel-ink:#425a75;--panel-wash:#eff3f8;--panel-edge:#b9c7d8}
+ [data-panel-tone="gold"] {--panel-ink:#705524;--panel-wash:#f8f3e7;--panel-edge:#d5c39c}
+ [data-panel-tone="rose"],.question-section .comment-card {
+  --panel-ink:#74465d;
+  --panel-wash:#f8eef3;
+  --panel-edge:#d8baca;
+ }
+ [data-panel-tone] > :is(h1,h2,.section-title),
+ .question-section .measurement-card > h3,
+ .question-section .comment-card > label {
+  margin:0 0 14px;
+  padding:9px 13px;
+  border-radius:8px;
+  background:var(--panel-ink);
+  color:#fff;
+  line-height:1.35;
+ }
+ [data-panel-tone] > .section-title :is(h1,h2,.section-hint),
+ .question-section .comment-card > label span {color:#fff}
+ [data-panel-tone] > .section-title .step {background:#fff3;border-color:#fffa;color:#fff}
+ .admin-workspace [data-panel-tone] > h1,.member-workspace [data-panel-tone] > h1 {font-size:clamp(19px,2.3vw,24px)}
+ .admin-workspace [data-panel-tone] > h2,.admin-workspace [data-panel-tone] > .section-title h2,.member-workspace [data-panel-tone] > h2 {font-size:17px}
+ .admin-workspace :is(.admin-account,.admin-record,.request-history),
+ .member-workspace .request-history {
+  background:#ffffffbd;
+  border-color:var(--panel-edge);
+ }
+ .admin-workspace #admin-inbox > h3 {border-left:3px solid var(--panel-ink);padding-left:8px}
+ .member-password-pair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ #member-password-feedback:empty {display:none}
+ .chart-command-bar {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 14px;margin:0 0 12px}
+ .chart-command-bar .chart-section-nav {margin:0}
+ .chart-quick-actions {margin-left:auto;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+ .chart-review-badge {
+  display:inline-flex;
+  align-items:center;
+  padding:7px 10px;
+  border:1px solid #c9b897;
+  border-radius:999px;
+  background:#faf1db;
+  color:#624617;
+  font-size:12px;
+  font-weight:700;
+ }
+ .chart-review-badge[data-state="reviewed"] {background:#dfefe8;border-color:#9bbfb0;color:#204e43}
+ .chart-review-badge[data-state="stale"] {background:#f5e4ed;border-color:#d3aabd;color:#6c3b53}
+ .assessment-heading {padding:12px 14px;border:1px solid var(--panel-edge);border-radius:12px}
+ .assessment-heading .section-title {background:var(--panel-ink);border-radius:8px;padding:7px 11px}
+ .assessment-heading .section-title h2 {color:white}
+ .question-section .question-card {border-left:4px solid #8cb3a7}
+ .question-section .question-card:nth-of-type(even) {border-left-color:#a8b8cf}
+ .question-section .clinical-scope {border-color:#9abcb0}
+ .spinal-survey:nth-of-type(3n+2) {--panel-ink:#425a75;--panel-wash:#eff3f8;--panel-edge:#b9c7d8}
+ .spinal-survey:nth-of-type(3n+3) {--panel-ink:#74465d;--panel-wash:#f8eef3;--panel-edge:#d8baca}
+}
+@media screen and (max-width:700px) {
+ .chart-command-bar {display:contents}
+ .chart-quick-actions {justify-content:space-between;margin:0 0 10px}
+ .member-password-pair {grid-template-columns:1fr;gap:0}
+}

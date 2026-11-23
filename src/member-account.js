@@ -1,12 +1,65 @@
-import {supabase} from './backend.js';
+import {supabase,passwordChangeClient} from './backend.js';
 import {escape as e} from './icons.js';
 export const memberLabel=access=>access?.member_type==='general'?'일반회원':access?.approved?'치료사회원 · 인증 완료':'치료사회원 · 인증 대기';
 export const requestLabels={verification:'치료사회원 인증',patients:'대상자 이용권 추가',visits:'대상자별 회차 추가'};
 export const statusLabels={pending:'검토 중',approved:'승인',rejected:'반려'};
 export async function renderAccount(o){
- const access=o.getAccess(),verified=(access.member_type||'therapist')==='therapist'&&access.approved;
- o.root.innerHTML=o.header()+`<main class="workspace member-workspace"><a href="#/patients">← 평가 화면</a><section class="identity-card"><div class="eyebrow">MY MEMBERSHIP</div><h1>회원정보 · 이용권 요청</h1><span class="membership-badge">${e(memberLabel(access))}</span><p>${verified?`대상자 최대 ${access.patient_limit}명 · 대상자별 최대 ${access.visit_limit}회차`:'평가·결과지 확인과 인쇄만 이용할 수 있습니다. 평가 내용은 기기·서버에 저장하지 않습니다. 인증 완료 후 대상자 저장과 차팅을 이용할 수 있습니다.'}</p><button class="button secondary" id="account-refresh">회원 상태 · 처리 결과 새로고침</button></section><section class="identity-card"><h2>관리자에게 요청하기</h2><form id="member-request-form"><label>요청 종류<select name="kind" id="request-kind">${Object.entries(requestLabels).filter(([kind])=>!verified||kind!=='verification').map(([kind,label])=>`<option value="${kind}">${label}</option>`).join('')}</select></label><label id="request-amount-label">추가 수량<input type="number" id="request-amount" name="amount" min="1" max="1000" step="1" value="1"></label><label>요청 내용<textarea name="message" id="request-message" maxlength="1000" rows="4" required placeholder="인증 확인에 필요한 내용 또는 추가 이용권이 필요한 사유를 적어주세요. 대상자 이름·건강정보는 적지 마세요."></textarea></label><p class="helper">회차 이용권은 각 대상자의 회차 한도를 늘립니다. 이용권 승인과 치료사회원 인증은 별개입니다.</p><button class="button primary" type="submit">관리자에게 요청 보내기</button><p role="status" id="request-feedback"></p></form></section><section class="identity-card"><h2>내 요청 내역</h2><div id="my-requests"><p>불러오는 중…</p></div></section>${o.footer()}</main>`;o.bindHeader();
+ const access=o.getAccess(),therapist=(access.member_type||'therapist')==='therapist',verified=therapist&&access.approved;
+ o.root.innerHTML=o.header()+`<main class="workspace member-workspace"><a href="#/patients">← 평가 화면</a><section class="identity-card" data-panel-tone="navy"><h1>회원정보 · 이용권 요청</h1><span class="membership-badge">${e(memberLabel(access))}</span><p>${verified?`대상자 최대 ${access.patient_limit}명 · 대상자별 최대 ${access.visit_limit}회차`:'평가·결과지 확인과 인쇄만 이용할 수 있습니다. 평가 내용은 기기·서버에 저장하지 않습니다. 인증 완료 후 대상자 저장과 차팅을 이용할 수 있습니다.'}</p><button class="button secondary" id="account-refresh">회원 상태 · 처리 결과 새로고침</button></section>${therapist&&o.user?.email?`<section class="identity-card" data-panel-tone="rose">
+  <h2>비밀번호 변경</h2>
+  <form id="member-password-form" data-inline-action>
+   <input type="hidden" name="username" value="${e(o.user.email)}" autocomplete="username">
+   <label>현재 비밀번호<input name="currentPassword" type="password" autocomplete="current-password" required></label>
+   <div class="member-password-pair">
+    <label>새 비밀번호<input name="newPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+    <label>새 비밀번호 확인<input name="confirmPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+   </div>
+   <p class="helper">새 비밀번호는 10자 이상으로 입력해 주세요.</p>
+   <button class="button primary" type="submit">비밀번호 변경</button>
+   <p role="status" id="member-password-feedback"></p>
+  </form>
+ </section>`:''}<section class="identity-card" data-panel-tone="mint"><h2>관리자에게 요청하기</h2><form id="member-request-form"><label>요청 종류<select name="kind" id="request-kind">${Object.entries(requestLabels).filter(([kind])=>!verified||kind!=='verification').map(([kind,label])=>`<option value="${kind}">${label}</option>`).join('')}</select></label><label id="request-amount-label">추가 수량<input type="number" id="request-amount" name="amount" min="1" max="1000" step="1" value="1"></label><label>요청 내용<textarea name="message" id="request-message" maxlength="1000" rows="4" required placeholder="인증 확인에 필요한 내용 또는 추가 이용권이 필요한 사유를 적어주세요. 대상자 이름·건강정보는 적지 마세요."></textarea></label><p class="helper">회차 이용권은 각 대상자의 회차 한도를 늘립니다. 이용권 승인과 치료사회원 인증은 별개입니다.</p><button class="button primary" type="submit">관리자에게 요청 보내기</button><p role="status" id="request-feedback"></p></form></section><section class="identity-card" data-panel-tone="silver"><h2>내 요청 내역</h2><div id="my-requests"><p>불러오는 중…</p></div></section>${o.footer()}</main>`;o.bindHeader();
  const form=document.querySelector('#member-request-form'),feedback=document.querySelector('#request-feedback'),list=document.querySelector('#my-requests');const alive=()=>o.active()&&document.querySelector('#my-requests')===list;
+ const passwordForm=document.querySelector('#member-password-form');
+ if(passwordForm){
+  const feedback=passwordForm.querySelector('#member-password-feedback');
+  const changeButton=passwordForm.querySelector('button');
+  passwordForm.onsubmit=async event=>{
+   event.preventDefault();
+   if(!alive()||changeButton.disabled)return;
+   const {currentPassword,newPassword,confirmPassword}=passwordForm.elements;
+   if(newPassword.value!==confirmPassword.value){feedback.textContent='새 비밀번호 확인이 일치하지 않습니다.';return;}
+   if(newPassword.value===currentPassword.value){feedback.textContent='현재와 다른 비밀번호를 입력해 주세요.';return;}
+   changeButton.disabled=true;
+   feedback.textContent='현재 비밀번호를 확인하는 중…';
+   const nextPassword=newPassword.value;
+   const signal=AbortSignal.timeout(15000);
+   let verifiedSession=false,client;
+   try{
+    client=passwordChangeClient(signal);
+    const {data,error}=await client.auth.signInWithPassword({email:o.user.email,password:currentPassword.value});
+    verifiedSession=!!data.session;
+    if(!alive())return;
+    if(error||data.user?.id!==o.user.id){
+     feedback.textContent=error?.code==='invalid_credentials'?'현재 비밀번호가 올바르지 않습니다.':'본인 확인을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+     return;
+    }
+    const {error:changeError}=await client.auth.updateUser({password:nextPassword});
+    if(!alive())return;
+    if(changeError){
+     feedback.textContent=changeError.code==='weak_password'?'더 강한 새 비밀번호를 입력해 주세요.':'비밀번호를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.';
+     return;
+    }
+    passwordForm.reset();
+    feedback.textContent='비밀번호를 변경했습니다.';
+   }catch{
+    if(alive())feedback.textContent='비밀번호 변경 결과를 확인하지 못했습니다.';
+   }finally{
+    if(verifiedSession)void client.auth.signOut({scope:'local'}).catch(()=>{});
+    if(alive())changeButton.disabled=false;
+   }
+  };
+ }
  const updateKind=()=>{const verify=form.elements.kind.value==='verification';document.querySelector('#request-amount-label').hidden=verify;form.elements.amount.disabled=verify;form.elements.amount.required=!verify;};form.elements.kind.onchange=updateKind;updateKind();
  async function load(){const {data,error}=await supabase.rpc('my_access_requests');if(!alive())return;if(error){list.textContent='요청 내역을 불러오지 못했습니다. 연결과 최신 데이터베이스 설정을 확인해 주세요.';return;}list.innerHTML=data.length?data.map(r=>`<article class="request-history"><strong>${e(requestLabels[r.kind]||r.kind)}${r.amount?' · '+r.amount:''}</strong><span class="request-status">${e(statusLabels[r.status])}</span><p>${e(r.message)}</p>${r.admin_note?`<p>관리자 답변: ${e(r.admin_note)}</p>`:''}<small>${e(new Date(r.created_at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul'}))}</small></article>`).join(''):'<p>아직 요청한 내역이 없습니다.</p>';}
  let requestId=crypto.randomUUID(),lastPayload='';

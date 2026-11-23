@@ -103,6 +103,12 @@ export const exercisePurpose=ex=>{const index=ex.sentence.indexOf(',');return in
 export function noteSource(patient,visit,chart){
  return JSON.stringify({noteFormatVersion,...(chart.basicImport?{basicImport:chart.basicImport}:{}),patientId:patient.id,identity:patient.identity,visitId:visit.id,serviceDate:chart.serviceDate,therapist:chart.therapist,startTime:chart.startTime,duration:chart.duration,subjective:chart.subjective,beforePain:chart.beforePain,afterPain:chart.afterPain,response:chart.response,homework:chart.homework??chart.education??'',nextVisitDate:chart.nextVisitDate||'',nextVisitTime:chart.nextVisitTime||'',nextPlan:chart.nextPlan,noExerciseReason:chart.noExerciseReason,context:chart.context,plan:chart.plan,performed:chart.performed,serviceRecord:chart.serviceRecord?{...chart.serviceRecord,photos:(chart.serviceRecord.photos||[]).map(photo=>photo?{id:photo.id,width:photo.width,height:photo.height,caption:photo.caption,addedAt:photo.addedAt}:null)}:null,basis:assessmentBasis(patient,chart.context.assessmentVisitId||visit.id)});
 }
+export function chartReviewStatus(patient,visit,chart){
+ if(!chart.draft?.trim())return 'empty';
+ const source=noteSource(patient,visit,chart);
+ if(chart.draftSource!==source)return 'stale';
+ return chart.reviewed?.source===source&&chart.reviewed.text===chart.draft?'reviewed':'draft';
+}
 export function chartIssues(chart){
  const issues=[];
  if(chart.serviceRecord?.status==='미실시'&&chart.performed.some(row=>row.status==='done'))issues.push('서비스 미실시 상태와 실제 실시 운동이 함께 기록되어 있습니다. 상태를 확인해 주세요.');
