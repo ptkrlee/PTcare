@@ -4,11 +4,11 @@ import {workflowProgress} from './assessment-workflow.js';
 
 const assessmentKey='spinal-asymmetry';
 const assessment=getAssessment(assessmentKey);
-// Only structured fields defined for this assessment may leave the admin screen.
+// Export structured responses and the two explicitly named identity fields.
 const fields=assessment.fields.filter(field=>field.type!=='text');
 const columns=[
- ['치료사 코드','같은 파일 안에서만 사용하는 일련번호'],
- ['대상자 코드','같은 파일 안에서 동일 대상자의 회차를 연결하는 일련번호'],
+ ['치료사 이름','해당 회차의 척추비대칭평가에서 검사자 칸에 입력한 이름. 비어 있으면 공란.'],
+ ['대상자 이름','대상자 기본 정보에 입력한 이름.'],
  ['회차','대상자의 방문 회차 번호'],
  ['평가 상태','완료, 치료사 종료(부분), 작성 중'],
 ];
@@ -47,13 +47,11 @@ export async function collectSpinalExport(rpc,{active,progress}){
  const members=(await rpc('admin_therapists')).filter(member=>
   (member.member_type||'therapist')==='therapist'&&Number(member.patient_count)>0);
  const results=[];
- let patientNumber=0;
  for(const [index,member] of members.entries()){
   if(!active())return null;
   progress(index+1,members.length);
   const patients=await rpc('admin_patient_records',{p_owner_id:member.user_id});
   for(const {document} of patients){
-   const visits=[];
    for(const visit of document.visits||[]){
     const form=visit.forms?.[assessmentKey];
     if(!form)continue;
@@ -63,11 +61,14 @@ export async function collectSpinalExport(rpc,{active,progress}){
     if(values.every(value=>value===null))continue;
     const state=workflowProgress(assessment,form,summarize(assessment,form.answers,answers));
     const status=state.complete?'완료':state.closed?'치료사 종료(부분)':'작성 중';
-    visits.push([visit.sequence,status,...values,...['ndi','rmdq','cv'].map(key=>scores.get(key)??null)]);
+    const examiner=answers['sca-cover-examiner'];
+    const patientName=document.identity?.name;
+    results.push([
+     typeof examiner==='string'?examiner:null,
+     typeof patientName==='string'?patientName:null,
+     visit.sequence,status,...values,...['ndi','rmdq','cv'].map(key=>scores.get(key)??null),
+    ]);
    }
-   if(!visits.length)continue;
-   patientNumber++;
-   for(const visit of visits)results.push(['T'+(index+1),'P'+patientNumber,...visit]);
   }
  }
  return results;

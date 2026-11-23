@@ -11,11 +11,12 @@ test('administrator downloads a workbook with structured spinal results across t
    'spinal-asymmetry':{fields,answers:{},note:'비공개 평가 메모',measurementPhotos:{'sca-cca-1':{data:'data:image/jpeg;base64,PRIVATEPHOTO'}}},
   }});
   const visits=[visit(1,{
+   'sca-cover-examiner':index===0?'검사자 김하나':'=2+2',
    'sca-cca-1':String(index*17),'sca-cca-1-direction':'오른쪽','sca-cover-number':'PRIVATE-1234',
    'sca-rmdq-confirmed':'모든 문항을 확인함',
   })];
   if(index===0)visits.push(visit(2,{'sca-pain-neck':'6'}),visit(3,{}));
-  cloud.rows.set(id,{id,owner_id,revision:1,document:{id,identity:{name:'비공개 환자',birth:'1963-02-04'},visits}});
+  cloud.rows.set(id,{id,owner_id,revision:1,document:{id,identity:{name:index===0?'대상자 박하나':'대상자 이두리',birth:'1963-02-04'},visits}});
  }
  await cloud.attach(context);
 
@@ -41,5 +42,18 @@ test('administrator downloads a workbook with structured spinal results across t
  expect(result).toContain('<v>17</v>');
  expect(result).toMatch(/<c r="[^"]+"(?: t="n")?><v>0<\/v><\/c>/);
  expect(strings).toContain('RMDQ 총점');
+ expect(strings).toContain('치료사 이름');
+ expect(strings).toContain('대상자 이름');
+ expect(strings).not.toMatch(/치료사 코드|대상자 코드/);
+ const cells=[...strings.matchAll(/<si>(.*?)<\/si>/gs)].map(match=>match[1]);
+ for(const [address,name] of [
+  ['A2','검사자 김하나'],['B2','대상자 박하나'],['B3','대상자 박하나'],['A4','=2+2'],['B4','대상자 이두리'],
+ ]){
+  const index=cells.findIndex(cell=>cell.includes(name));
+  expect(index).toBeGreaterThanOrEqual(0);
+  expect(result).toContain(`<c r="${address}" t="s"><v>${index}</v></c>`);
+ }
+ expect(result).not.toContain('r="A3"');
+ expect(result).not.toContain('<f>');
  expect(strings).not.toMatch(/비공개|PRIVATE-1234|PRIVATEPHOTO|1963-02-04|2026-10-23|@example\.test/);
 });
