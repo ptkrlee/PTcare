@@ -19,8 +19,16 @@ create table if not exists public.patient_records (
 create index if not exists patient_records_owner_idx on public.patient_records(owner_id, updated_at desc);
 alter table public.patient_records enable row level security;
 alter table public.patient_records force row level security;
+-- Supabase Auth soft deletion preserves user IDs for clinical records and audits.
+-- Reject already issued tokens for a soft-deleted account at the database boundary.
+create or replace function public.member_session_active() returns boolean
+language sql stable security definer set search_path='' as $$
+ select exists(select 1 from auth.users where id=auth.uid() and deleted_at is null);
+$$;
+revoke all on function public.member_session_active() from public,anon;
+grant execute on function public.member_session_active() to authenticated,service_role;
 drop policy if exists own_records_select on public.patient_records;
-create policy own_records_select on public.patient_records for select to authenticated using(owner_id=auth.uid());
+create policy own_records_select on public.patient_records for select to authenticated using(owner_id=auth.uid() and (select public.member_session_active()));
 drop policy if exists own_records_insert on public.patient_records;
 create policy own_records_insert on public.patient_records for insert to authenticated with check(owner_id=auth.uid());
 drop policy if exists own_records_update on public.patient_records;
@@ -145,14 +153,14 @@ language sql stable security definer set search_path='' as $$
  select jsonb_build_object('member_type',a.member_type,'approved',a.approved,'patient_limit',a.patient_limit,'visit_limit',a.visit_limit,
  'is_admin',exists(select 1 from public.platform_admins where user_id=auth.uid()),
  'patient_count',(select count(*) from public.patient_records where owner_id=auth.uid()))
- from public.therapist_access a where a.user_id=auth.uid();
+ from public.therapist_access a where a.user_id=auth.uid() and public.member_session_active();
 $$;
 create or replace function public.admin_therapists() returns jsonb
 language plpgsql stable security definer set search_path='' as $$
 begin
  if not exists(select 1 from public.platform_admins where user_id=auth.uid()) then raise exception 'Admin access required' using errcode='42501';end if;
  return coalesce((select jsonb_agg(row_to_json(t) order by t.email) from (
- select a.*,u.email,(select count(*) from public.patient_records p where p.owner_id=a.user_id) as patient_count,
+ select a.*,u.email,u.deleted_at,(select count(*) from public.patient_records p where p.owner_id=a.user_id) as patient_count,
  (select coalesce(sum(jsonb_array_length(p.document->'visits')),0) from public.patient_records p where p.owner_id=a.user_id) as visit_count
  from public.therapist_access a join auth.users u on u.id=a.user_id) t),'[]'::jsonb);
 end;$$;
@@ -166,7 +174,7 @@ begin
  if p_member_type is not null and p_member_type not in ('general','therapist') then raise exception 'Invalid membership type' using errcode='22023';end if;
  if p_approved is null or p_patient_limit is null or p_visit_limit is null or p_reason is null or length(trim(p_reason)) not between 1 and 1000 then raise exception '승인 상태, 한도, 변경 사유를 입력해 주세요.' using errcode='22023';end if;
  select * into prior from public.therapist_access where user_id=p_user_id for update;
- if not found then raise exception 'Therapist not found' using errcode='22023';end if;
+ if not found or exists(select 1 from auth.users where id=p_user_id and deleted_at is not null) then raise exception 'Active member not found' using errcode='22023';end if;
  if coalesce(p_member_type,prior.member_type)='general' and p_approved then raise exception '치료사회원으로 구분한 뒤 인증을 승인해 주세요.' using errcode='22023';end if;
  if p_expected_updated_at is not null and prior.updated_at<>p_expected_updated_at then raise exception '회원 설정이 다른 작업에서 변경되었습니다. 새로고침 후 다시 확인해 주세요.' using errcode='40001';end if;
  update public.therapist_access set member_type=coalesce(p_member_type,member_type),approved=p_approved,patient_limit=p_patient_limit,visit_limit=p_visit_limit,updated_at=now() where user_id=p_user_id returning * into updated;
@@ -206,7 +214,7 @@ returns setof public.patient_records
 language plpgsql security definer set search_path = '' as $$
 declare old public.patient_records; uid uuid := auth.uid(); access public.therapist_access;
 begin
- if uid is null then raise exception 'Authentication required' using errcode='28000'; end if;
+ if not public.member_session_active() then raise exception 'Authentication required' using errcode='28000'; end if;
  if p_expected_revision is null or p_expected_revision < 0 or p_change_id is null or p_id is null then
   raise exception 'Invalid revision or change id' using errcode='22023';
  end if;
@@ -243,13 +251,13 @@ grant execute on function public.save_patient_record(uuid,jsonb,bigint,uuid) to 
 create or replace function public.my_access_requests() returns jsonb
 language sql stable security definer set search_path='' as $$
  select coalesce(jsonb_agg(to_jsonb(r) order by r.created_at desc),'[]'::jsonb)
- from (select * from public.access_requests where owner_id=auth.uid() order by created_at desc limit 100) r;
+ from (select * from public.access_requests where owner_id=auth.uid() and public.member_session_active() order by created_at desc limit 100) r;
 $$;
 create or replace function public.submit_access_request(p_id uuid,p_kind text,p_amount integer,p_message text) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare account public.therapist_access; prior public.access_requests; saved public.access_requests;
 begin
- if auth.uid() is null then raise exception 'Authentication required' using errcode='28000';end if;
+ if not public.member_session_active() then raise exception 'Authentication required' using errcode='28000';end if;
  select * into account from public.therapist_access where user_id=auth.uid() for update;
  if not found then raise exception 'Membership not found' using errcode='42501';end if;
  if p_id is null or p_kind is null or p_kind not in ('verification','patients','visits') or p_amount is null or p_message is null or length(trim(p_message)) not between 1 and 1000 then raise exception '요청 내용과 종류를 확인해 주세요.' using errcode='22023';end if;

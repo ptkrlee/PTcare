@@ -50,7 +50,7 @@ export function renderSpinalForm({assessment,form,patient,visit,renderField}){
    <caption>${caption}</caption>
    <thead><tr><th scope="col">자세</th>${columns.map(([,label])=>`<th scope="col">${label}</th>`).join('')}${average?'<th scope="col">평균</th>':''}</tr></thead>
    <tbody>
-   ${columns.some(([id])=>fields.has(id+'-direction'))?`<tr><th scope="row">기울기 방향</th>${columns.map(([id])=>`<td>${fields.has(id+'-direction')?render(fields.get(id+'-direction')):'—'}</td>`).join('')}</tr>`:''}
+   ${columns.some(([id])=>fields.has(id+'-direction'))?`<tr class="spinal-direction-row"><th scope="row">기울기 방향</th>${columns.map(([id])=>`<td>${fields.has(id+'-direction')?render(fields.get(id+'-direction')):'—'}</td>`).join('')}</tr>`:''}
    <tr><th scope="row">측정값 <br>· 사진</th>${columns.map(([id])=>{
     const field=fields.get(id);
     return `<td>${render(field)}${renderSpinalPhoto(field,form.measurementPhotos?.[id])}</td>`;

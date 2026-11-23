@@ -18,6 +18,14 @@ test('spinal asymmetry records angles and shows the CV average after all three r
   '척추 이마면 비대칭 (SCA)','앞쪽머리자세 (FHP)',
  ]);
  await expect(page.locator('[data-spinal-total=cv]')).toHaveText('—');
+ for(const region of ['cca','tca']){
+  const layout=await page.locator(`#sca-${region}-1-direction .direct-choice`).evaluateAll(choices=>
+   choices.map(choice=>({top:choice.offsetTop,left:choice.offsetLeft})));
+  expect(layout[0].top).toBe(layout[1].top);
+  expect(layout[1].left).toBeGreaterThan(layout[0].left);
+  expect(layout[2].top).toBeGreaterThan(layout[0].top);
+ }
+
  await page.locator('#view-incomplete').click();
  await expect(page.locator('.unresolved-highlight')).toContainText('NDI · 통증 강도');
 

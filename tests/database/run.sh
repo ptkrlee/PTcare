@@ -42,3 +42,4 @@ echo 'PASS: schema reinstallation preserves clinical data, admin role and access
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/membership.sql
 docker cp supabase/upgrade-eight-visits.sql "$container:/tmp/ptcare-upgrade-eight-visits.sql"
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/eight-visits.sql
+docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/member-retirement.sql
