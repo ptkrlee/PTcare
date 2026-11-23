@@ -6,7 +6,8 @@ const actions=new Set(['status','reset','confirm-email','retire']);
 export function createAdminMemberHandler(connect=createClient,env=process.env){
  return async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
-  const fail=(status,code)=>res.status(status).json({code});
+  const deadline=AbortSignal.timeout(9000);
+  const fail=(status,code)=>deadline.aborted?res.status(504).json({code:'timeout'}):res.status(status).json({code});
   if(req.method!=='POST'){res.setHeader('Allow','POST');return fail(405,'method');}
   const bearer=req.headers.authorization?.match(/^Bearer (\S+)$/i)?.[1];
   if(!bearer)return fail(401,'login');
@@ -18,7 +19,10 @@ export function createAdminMemberHandler(connect=createClient,env=process.env){
   }
   if(typeof body?.userId!=='string'||!uuid.test(body.userId)||!actions.has(body.action))return fail(400,'input');
   try{
-   const client=connect(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+   const client=connect(env.SUPABASE_URL,env.SUPABASE_SERVICE_ROLE_KEY,{
+    auth:{persistSession:false,autoRefreshToken:false},
+    global:{fetch:(input,init)=>fetch(input,{...init,signal:init?.signal?AbortSignal.any([init.signal,deadline]):deadline})},
+   });
    const {data:{user:actor},error:authError}=await client.auth.getUser(bearer);
    if(authError||!actor)return fail(401,'login');
    const admin=id=>client.from('platform_admins').select('user_id').eq('user_id',id).maybeSingle();

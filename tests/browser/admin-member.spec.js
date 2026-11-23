@@ -41,3 +41,33 @@ test('admin verifies account status, requests reset, and confirms retirement by 
  await expect(page.locator('#access-form button')).toBeDisabled();
  expect(actions).toEqual(['status','reset','retire']);
 });
+
+test('a slow account status request releases controls and leaves the administrator page usable',async({page,context})=>{
+ await mockCloud().attach(context);
+ let requests=0,releaseStalled;
+ const stalled=new Promise(resolve=>{releaseStalled=resolve;});
+ await page.route('**/api/admin-member',async route=>{
+  if(++requests===1){
+   await stalled;
+   await route.abort().catch(()=>{});
+   return;
+  }
+  await route.fulfill({json:{emailConfirmed:false,lastSignIn:null,suspended:false,retired:false}});
+ });
+ await login(page,'admin@example.test');
+ await page.getByRole('link',{name:'관리자',exact:true}).click();
+ await page.locator('#admin-search').fill('other@example.test');
+ await page.getByRole('button',{name:'이용권 관리 · 기록 열람'}).click();
+ const button=page.getByRole('button',{name:'로그인 상태 확인'});
+ const status=page.locator('[data-member-status]');
+ try{
+  await button.click();
+  await expect(status).toHaveText('처리 중…');
+  await expect(page.locator('#processing-dialog')).toHaveCount(0);
+  await expect(status).toContainText('인증 서버 응답이 지연됩니다.',{timeout:15000});
+  await expect(button).toBeEnabled();
+  await button.click();
+  await expect(status).toContainText('이메일 인증 대기');
+  expect(requests).toBe(2);
+ }finally{releaseStalled();}
+});

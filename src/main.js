@@ -71,7 +71,7 @@ function render(){
  if(!store){root.innerHTML=header()+'<main class="workspace"><p class="loading">대상자 기록을 불러오고 있습니다…</p></main>';bindHeader();return;}
  if(access&&!!store.temporary===canStoreRecords(access)){selectStore();if(route.patient){routeTo('/patients');return;}}
  if(route.page==='account'){const user=session.user.id;renderAccount({root,header,footer,bindHeader,getAccess:()=>access||{},active:()=>session?.user.id===user&&parseRoute().page==='account',refresh:async()=>{await refreshAccess();selectStore();render();}});return;}
- if(route.page==='admin'){if(!access?.is_admin){renderMissing('관리자만 접근할 수 있습니다.');return;}const account=session.user.id;renderAdmin({root,header,footer,bindHeader,active:()=>session?.user.id===account&&parseRoute().page==='admin'});return;}
+ if(route.page==='admin'){if(!access?.is_admin){renderMissing('관리자만 접근할 수 있습니다.');return;}const account=session.user.id;renderAdmin({root,header,footer,bindHeader,getAccessToken:()=>session?.access_token,active:()=>session?.user.id===account&&parseRoute().page==='admin'});return;}
  if(!access){renderAccessGate();return;}
  if(store.temporary&&(route.charting||route.plan)){renderMissing('평가 전용 회원은 저장·차팅을 이용할 수 없습니다. 회원정보에서 치료사회원 인증을 요청해 주세요.');return;}
  if(route.page==='patients'&&route.patient){
