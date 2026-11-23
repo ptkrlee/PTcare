@@ -1,3 +1,5 @@
+import {execFileSync} from 'node:child_process';
+import {getAssessment} from '../../src/data.js';
 import {test,expect} from '@playwright/test';
 import {mockCloud,login,patient} from './mock-cloud.js';
 
@@ -82,10 +84,70 @@ test('spinal asymmetry records angles and shows the CV average after all three r
  await expect(page.locator('#sca-pain-neck')).toHaveValue('6');
  await expect(page.locator('#sca-rmdq-items-23')).toBeChecked();
  await page.locator('.score-sidebar .result-button').click();
- const result=page.locator('.result-measurements');
+ const result=page.locator('.spinal-result');
  await expect(result).toContainText('테스트 검사자');
- await expect(result.getByText('등허리뼈 (TCA) 중립 2차 기울기 방향').locator('..')).toContainText('오른쪽');
+ await expect(result.locator('.spinal-result-group').filter({hasText:'등허리뼈 (TCA)'}).locator('.spinal-result-reading').nth(1)).toContainText('오른쪽');
  await expect(result).toContainText('43.25 °');
  await expect(result).toContainText('20 / 50점');
  await expect(result).toContainText('2 / 24점');
+ await expect(result.locator('.spinal-result-photo')).toHaveCount(2);
+ await result.getByRole('button',{name:/20초 사진 크게 보기/}).click();
+ await expect(page.locator('#app-dialog img')).toBeVisible();
+ await page.getByRole('button',{name:'닫기',exact:true}).click();
+});
+
+
+test('spinal result prints all measurement photos, selected survey items and notes on one A4 page',async({page,context},testInfo)=>{
+ const cloud=mockCloud();
+ await cloud.attach(context);
+ const member=[...cloud.access.values()].find(account=>account.email==='therapist@example.test');
+ const id=crypto.randomUUID(),visitId=crypto.randomUUID();
+ const {fields:specs}=getAssessment('spinal-asymmetry');
+ const fields=Object.fromEntries(specs.map(field=>[field.id,field.type==='number'?'8':
+  field.type==='checks'?field.options:
+  field.type==='select'?field.options[field.id.startsWith('sca-ndi-')&&field.id!=='sca-ndi-1'?2:0]:
+  '확인 내용 '.repeat(20),
+ ]));
+ const measurements=specs.filter(field=>field.type==='number'&&/^sca-(cca|tca|fhp)-/.test(field.id));
+ const photos=await page.evaluate(ids=>{
+  const canvas=document.createElement('canvas');
+  canvas.width=96;
+  canvas.height=72;
+  const context=canvas.getContext('2d');
+  return ids.map((id,index)=>{
+   context.fillStyle=`hsl(${index*30},50%,60%)`;
+   context.fillRect(0,0,96,72);
+   return [id,{data:canvas.toDataURL('image/jpeg')}];
+  });
+ },measurements.map(field=>field.id));
+ const form={answers:{},fields,drawings:{},measurementPhotos:Object.fromEntries(photos),note:'평가 메모 확인. '.repeat(40)};
+ const visit={id:visitId,date:'2026-11-23',sequence:1,forms:{'spinal-asymmetry':form}};
+ cloud.rows.set(id,{id,owner_id:member.user_id,revision:1,document:{
+  id,identity:{name:'테스트 대상자',birth:'1960-01-01',sex:'여성'},updatedAt:new Date().toISOString(),visits:[visit],
+ }});
+ await login(page);
+ await page.evaluate(path=>location.hash=path,`/patients/${id}/visits/${visitId}/assessments/spinal-asymmetry/result`);
+
+ const sheet=page.locator('.spinal-result');
+ await expect(sheet.locator('.spinal-result-section h2')).toHaveText([
+  '기본 정보','부위별 통증 (0–10점)','목 장애 지수 (NDI)','롤랜드-모리스 허리통증 장애 설문 (RMDQ)',
+  '척추 이마면 비대칭 (SCA)','앞쪽머리자세 (FHP)',
+ ]);
+ const ndi=sheet.locator('.spinal-result-survey').first();
+ await expect(ndi).toContainText('18 / 50점');
+ await expect(ndi.getByText('통증 강도',{exact:true})).toHaveCount(0);
+ await expect(ndi.locator('dd')).toHaveCount(9);
+ await expect(sheet.locator('.spinal-result-photo img')).toHaveCount(12);
+
+ const pdf=testInfo.outputPath('spinal-result-a4.pdf');
+ await page.emulateMedia({media:'print'});
+ await page.pdf({path:pdf,format:'A4',preferCSSPageSize:true});
+ const info=execFileSync('pdfinfo',[pdf],{encoding:'utf8'});
+ expect(info).toMatch(/Pages:\s+1\b/);
+ expect(info).toMatch(/Page size:.*A4/);
+ const images=execFileSync('pdfimages',['-list',pdf],{encoding:'utf8'});
+ expect(images.split('\n').filter(line=>/^\s+1\s+\d+\s+image\s/.test(line))).toHaveLength(12);
+ const content=execFileSync('pdftotext',[pdf,'-'],{encoding:'utf8'});
+ expect(content).toContain('24 / 24');
+ expect(content).toContain('평가 메모');
 });

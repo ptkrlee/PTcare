@@ -1,3 +1,4 @@
+import {cervicalMeasurements,thoracolumbarMeasurements,headPostureMeasurements} from './spinal-measurements.js';
 import {renderSpinalPhoto} from './spinal-photos.js';
 import {escape as e} from './icons.js';
 import {spinalCoverFields,spinalSurveySections} from './spinal-surveys.js';
@@ -48,7 +49,7 @@ export function renderSpinalForm({assessment,form,patient,visit,renderField}){
  const table=(caption,columns,average=false)=>`<div class="spinal-table-scroll" tabindex="0" role="region" aria-label="${caption} 측정표">
   <table class="result-table spinal-table">
    <caption>${caption}</caption>
-   <thead><tr><th scope="col">자세</th>${columns.map(([,label])=>`<th scope="col">${label}</th>`).join('')}${average?'<th scope="col">평균</th>':''}</tr></thead>
+   <thead><tr><th scope="col">자세</th>${columns.map(([id,label])=>`<th scope="col">${e(label)}<br>(${e(fields.get(id).unit)})</th>`).join('')}${average?'<th scope="col">평균</th>':''}</tr></thead>
    <tbody>
    ${columns.some(([id])=>fields.has(id+'-direction'))?`<tr class="spinal-direction-row"><th scope="row">기울기 방향</th>${columns.map(([id])=>`<td>${fields.has(id+'-direction')?render(fields.get(id+'-direction')):'—'}</td>`).join('')}</tr>`:''}
    <tr><th scope="row">측정값 <br>· 사진</th>${columns.map(([id])=>{
@@ -58,14 +59,10 @@ export function renderSpinalForm({assessment,form,patient,visit,renderField}){
    </tbody>
   </table>
  </div>`;
- const neutral=region=>[1,2,3].map(trial=>[`sca-${region}-${trial}`,`중립 ${trial}<br>(°)`]);
  const sca=card('척추 이마면 비대칭 (SCA)',`<p>목뼈 중립은 측정 사이에 1분간 쉬고, 선 자세로 돌아온 뒤 다시 엎드려 측정합니다. 중립 자세를 측정할 때마다 대상자 기준 기울기 방향을 먼저 선택한 뒤 각도를 입력하세요.</p>
-  ${table('목뼈 (CCA)',neutral('cca'))}
-  ${table('등허리뼈 (TCA)',[...neutral('tca'),['sca-tca-left','왼쪽 옆굽힘 (°)'],['sca-tca-right','오른쪽 옆굽힘 (°)']])}`);
+  ${table('목뼈 (CCA)',cervicalMeasurements)}
+  ${table('등허리뼈 (TCA)',thoracolumbarMeasurements)}`);
  const fhp=card('앞쪽머리자세 (FHP)',`<p>걷기 속도와 세 시점의 머리척추각을 입력합니다. 세 각도가 모두 유효하면 평균을 표시합니다.</p>
-  ${table('걷는 중 측정',[
-   ['sca-fhp-speed','걷기 속도<br>(km/h)'],
-   ...[15,20,25].map(seconds=>[`sca-fhp-cv-${seconds}`,`${seconds}초<br>(°)`]),
-  ],true)}`);
+  ${table('걷는 중 측정',headPostureMeasurements,true)}`);
  return cover+painMap+neckSurvey+backSurvey+sca+fhp;
 }

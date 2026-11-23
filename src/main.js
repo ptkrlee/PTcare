@@ -1,3 +1,5 @@
+import {bindSpinalResultPhotos} from './spinal-result.js';
+import './spinal-result.css';
 import {bindSpinalPhotos} from './spinal-photos.js';
 import {renderSpinalForm} from './spinal-form.js';
 import {secondsInputMax} from './time-input.js';
@@ -259,7 +261,7 @@ function updateScore(){
 function renderResult(){
  const {patient:p,visit:v,assessment:a,form:f}=selected(),s=progress(a,f);
  root.innerHTML=`<main class="result-page"><div class="result-toolbar"><a class="button secondary" href="#${assessmentPath()}">${icon('back')} 평가로 돌아가기</a><span>${store?.temporary?'현재 평가 결과 · 저장 안 함':s.closed?'치료사 확인으로 종료한 기록':s.complete?'완료 기록':'미완료 항목도 저장된 기록입니다'}</span><button class="button primary" id="print">${icon('print')} 인쇄 / PDF</button></div>${savingBar()}${patientNavigation(p,{visitId:v.id,active:'assessments',temporary:store.temporary})}${resultContents(a,f,s,{patient:p,visit:v,key:route.assessment}).replace('</header>', '</header>'+(s.closed?'<p class="result-closure-note">치료사 종료 · '+e(completionDate(s.closedAt))+(s.complete?' · 필수항목 작성 완료':' · 미완료 '+closureReminder(a,f,s).length+'개 · 미평가와 부분 점수 유지')+'</p>':''))}<p class="capture-note">A4 한 장 결과지 · 내용이 많으면 자동 축소됩니다. 읽기 쉽도록 긴 메모는 간결하게 정리해 주세요.</p></main>`;
- bindCommon();document.querySelector('#print').onclick=()=>window.print();document.querySelectorAll('[data-result-drawing]').forEach(canvas=>{mountMocaDrawing(canvas,f.drawings[canvas.dataset.resultDrawing],()=>{},a,canvas.dataset.resultDrawing,{legacy:legacyObservation(f,canvas.dataset.resultDrawing),editable:false});canvas.style.pointerEvents='none';});
+ bindCommon();if(a.code==='SCA')bindSpinalResultPhotos(root,modal);document.querySelector('#print').onclick=()=>window.print();document.querySelectorAll('[data-result-drawing]').forEach(canvas=>{mountMocaDrawing(canvas,f.drawings[canvas.dataset.resultDrawing],()=>{},a,canvas.dataset.resultDrawing,{legacy:legacyObservation(f,canvas.dataset.resultDrawing),editable:false});canvas.style.pointerEvents='none';});
 }
 function updateSaveStatus(){
  if(!store||store.temporary)return;const dirty=store.dirty();const node=document.querySelector('[data-save-status]');if(node){node.textContent=store.cacheError?'기기 임시 저장 실패 · 서버 저장 확인 필요':dirty.some(r=>r.conflict)?'저장 충돌 · 기기 기록 보존됨':store.loading?'서버 기록 불러오는 중…':dirty.length?`기기 임시 저장됨 · 서버 ${store.running?'동기화 중':'저장 대기'} (${dirty.length}명)`:store.error?'서버 연결 확인 필요':'서버 저장 완료';node.dataset.state=store.cacheError||store.error||dirty.some(r=>r.conflict)?'warning':dirty.length?'pending':'saved';}
