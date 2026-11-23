@@ -2,6 +2,7 @@
 -- A new sign-up is pending and cannot self-approve through metadata or direct table writes.
 insert into auth.users(id,email) values('44444444-4444-4444-8444-444444444444','pending@example.test');
 insert into public.platform_admins values('33333333-3333-4333-8333-333333333333');
+update auth.users set email_confirmed_at='2026-11-01 03:15:00+00' where id='11111111-1111-4111-8111-111111111111';
 set role authenticated;
 set request.jwt.claim.sub='44444444-4444-4444-8444-444444444444';
 do $$declare denied boolean:=false;a jsonb;begin
@@ -10,6 +11,7 @@ do $$declare denied boolean:=false;a jsonb;begin
  denied:=false;begin update public.therapist_access set approved=true;exception when insufficient_privilege then denied:=true;end;assert denied,'self approval allowed';
  denied:=false;begin insert into public.platform_admins values(auth.uid());exception when insufficient_privilege then denied:=true;end;assert denied,'self admin escalation allowed';
  denied:=false;begin perform public.admin_therapists();exception when insufficient_privilege then denied:=true;end;assert denied,'non-admin viewed accounts';
+ denied:=false;begin perform public.admin_member_login_status('11111111-1111-4111-8111-111111111111');exception when insufficient_privilege then denied:=true;end;assert denied,'non-admin viewed authentication status';
  denied:=false;begin perform public.admin_patient_records('11111111-1111-4111-8111-111111111111');exception when insufficient_privilege then denied:=true;end;assert denied,'non-admin viewed all records';
  denied:=false;begin perform public.admin_set_access(auth.uid(),true,100,100,'forged');exception when insufficient_privilege then denied:=true;end;assert denied,'non-admin granted tokens';
 end;$$;
@@ -26,6 +28,8 @@ set request.jwt.claim.sub='33333333-3333-4333-8333-333333333333';
 do $$declare denied boolean:=false;a jsonb;begin
  assert (public.my_access()->>'is_admin')::boolean;
  assert jsonb_array_length(public.admin_therapists())=4;
+ assert (public.admin_member_login_status('11111111-1111-4111-8111-111111111111')->>'emailConfirmedAt')::timestamptz='2026-11-01 03:15:00+00'::timestamptz;
+ assert public.admin_member_login_status('44444444-4444-4444-8444-444444444444')->'emailConfirmedAt'='null'::jsonb;
  assert jsonb_array_length(public.admin_patient_records('11111111-1111-4111-8111-111111111111'))=1;
  assert (select count(*) from public.patient_records)=0,'admin own record store exposed other records';
  begin perform public.save_patient_record('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','{}',3,gen_random_uuid());exception when insufficient_privilege then denied:=true;end;assert denied,'admin edited therapist clinical record';
@@ -55,5 +59,6 @@ set request.jwt.claim.sub='';
 do $$declare denied boolean:=false;begin
  begin perform public.my_access();exception when insufficient_privilege then denied:=true;end;assert denied,'anonymous access lookup permitted';
  denied:=false;begin perform public.admin_therapists();exception when insufficient_privilege then denied:=true;end;assert denied,'anonymous admin enumeration permitted';
+ denied:=false;begin perform public.admin_member_login_status('11111111-1111-4111-8111-111111111111');exception when insufficient_privilege then denied:=true;end;assert denied,'anonymous viewed authentication status';
 end;$$;
 reset role;

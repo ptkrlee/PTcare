@@ -38,6 +38,10 @@ export function mockCloud(){
    if(rpc==='admin_save_push_subscription'){subscriptions.set(body.p_subscription.endpoint,{subscription:body.p_subscription,user_id:owner,active:true});return reply(null);}
    if(rpc==='admin_remove_push_subscription'){const s=subscriptions.get(body.p_endpoint);if(s?.user_id===owner)s.active=false;return reply(null);}
    if(rpc==='admin_therapists')return reply([...access.values()].map(a=>({...a,patient_count:[...rows.values()].filter(r=>r.owner_id===a.user_id).length,visit_count:[...rows.values()].filter(r=>r.owner_id===a.user_id).reduce((n,r)=>n+r.document.visits.length,0)})));
+   if(rpc==='admin_member_login_status'){
+    const member=access.get(body.p_user_id);
+    return reply(member?{emailConfirmedAt:member.email_confirmed_at||null,lastSignIn:null,suspended:false,retired:!!member.deleted_at}:null);
+   }
    if(rpc==='admin_patient_records')return reply([...rows.values()].filter(r=>r.owner_id===body.p_owner_id));
    if(rpc==='admin_access_history')return reply(audits.filter(a=>a.therapist_id===body.p_owner_id));
    if(rpc==='admin_set_access'){const a=access.get(body.p_user_id),before=clone(a);Object.assign(a,{member_type:body.p_member_type||a.member_type,approved:body.p_approved,patient_limit:body.p_patient_limit,visit_limit:body.p_visit_limit});audits.push({therapist_id:a.user_id,reason:body.p_reason,before_access:before,after_access:clone(a),created_at:new Date().toISOString()});return reply(null);}

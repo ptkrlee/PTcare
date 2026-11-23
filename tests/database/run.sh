@@ -11,6 +11,7 @@ for i in $(seq 1 30); do
 done
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/bootstrap.sql
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < supabase/schema.sql
+docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < supabase/admin-member-login-status.sql
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/security.sql
 docker exec -i "$container" psql -U postgres -v ON_ERROR_STOP=1 < tests/database/access.sql
 # Two devices race for the final patient slot. The account lock serializes allocations.
